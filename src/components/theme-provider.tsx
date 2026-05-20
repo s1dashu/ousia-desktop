@@ -67,14 +67,9 @@ function isEditableTarget(target: EventTarget | null) {
     return true
   }
 
-  const editableParent = target.closest(
-    "input, textarea, select, [contenteditable='true']"
+  return Boolean(
+    target.closest("input, textarea, select, [contenteditable='true']")
   )
-  if (editableParent) {
-    return true
-  }
-
-  return false
 }
 
 export function ThemeProvider({
@@ -141,32 +136,24 @@ export function ThemeProvider({
 
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.repeat) {
+      if (event.repeat || isEditableTarget(event.target)) {
         return
       }
 
-      if (event.metaKey || event.ctrlKey || event.altKey) {
+      const usesPrimaryModifier = event.metaKey || event.ctrlKey
+      if (!usesPrimaryModifier || !event.shiftKey || event.altKey) {
         return
       }
 
-      if (isEditableTarget(event.target)) {
+      if (event.key.toLowerCase() !== "l") {
         return
       }
 
-      if (event.key.toLowerCase() !== "d") {
-        return
-      }
-
+      event.preventDefault()
       setThemeState((currentTheme) => {
-        const nextTheme =
-          currentTheme === "dark"
-            ? "light"
-            : currentTheme === "light"
-              ? "dark"
-              : getSystemTheme() === "dark"
-                ? "light"
-                : "dark"
-
+        const currentResolvedTheme =
+          currentTheme === "system" ? getSystemTheme() : currentTheme
+        const nextTheme = currentResolvedTheme === "dark" ? "light" : "dark"
         localStorage.setItem(storageKey, nextTheme)
         return nextTheme
       })
