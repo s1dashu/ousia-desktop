@@ -1,6 +1,10 @@
 import type {
+  OusiaAppState,
+  OusiaAppStateSaveResult,
   OusiaChatContext,
   OusiaChatEvent,
+  OusiaChatGenerateTitlePayload,
+  OusiaChatGenerateTitleResult,
   OusiaChatHistoryResult,
   OusiaChatInterruptResult,
   OusiaChatSendPayload,
@@ -11,7 +15,20 @@ import type {
   OusiaEditorReadFileResult,
   OusiaEditorSaveFilePayload,
   OusiaEditorSaveFileResult,
+  OusiaEnsureWindowWidthPayload,
+  OusiaEnsureWindowWidthResult,
+  OusiaExtensionStateDeletePayload,
+  OusiaExtensionStateGetPayload,
+  OusiaExtensionStateResult,
+  OusiaExtensionStateSaveResult,
+  OusiaExtensionStateSetPayload,
   OusiaOpenProjectResult,
+  OusiaPdfListFilesPayload,
+  OusiaPdfListFilesResult,
+  OusiaPdfReadFilePayload,
+  OusiaPdfReadFileResult,
+  OusiaPdfSaveFilePayload,
+  OusiaPdfSaveFileResult,
   OusiaRuntimeExtensionDeletePayload,
   OusiaRuntimeExtensionDeleteResult,
   OusiaRuntimeExtensionsChangedEvent,
@@ -23,14 +40,73 @@ import type {
   OusiaTerminalOperationResult,
   OusiaTerminalResizePayload,
   OusiaTerminalWritePayload,
+  OusiaWorkspaceAction,
   OusiaWindowFullscreenEvent,
+  OusiaWindowFullscreenResult,
 } from "./chat-types.js"
 
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron"
 
+function errorPayload(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+      name: error.name,
+      stack: error.stack,
+    }
+  }
+  return {
+    message: String(error),
+  }
+}
+
+window.addEventListener("error", (event) => {
+  ipcRenderer.send("ousia:log:renderer-error", {
+    colno: event.colno,
+    error: errorPayload(event.error),
+    filename: event.filename,
+    lineno: event.lineno,
+    message: event.message,
+    type: "window.error",
+  })
+})
+
+window.addEventListener("unhandledrejection", (event) => {
+  ipcRenderer.send("ousia:log:renderer-error", {
+    reason: errorPayload(event.reason),
+    type: "window.unhandledrejection",
+  })
+})
+
 const api = {
+  loadAppState(): Promise<OusiaAppState> {
+    return ipcRenderer.invoke("ousia:app-state:load")
+  },
+  saveAppState(payload: OusiaAppState): Promise<OusiaAppStateSaveResult> {
+    return ipcRenderer.invoke("ousia:app-state:save", payload)
+  },
+  getExtensionState(
+    payload: OusiaExtensionStateGetPayload
+  ): Promise<OusiaExtensionStateResult> {
+    return ipcRenderer.invoke("ousia:extension-state:get", payload)
+  },
+  setExtensionState(
+    payload: OusiaExtensionStateSetPayload
+  ): Promise<OusiaExtensionStateSaveResult> {
+    return ipcRenderer.invoke("ousia:extension-state:set", payload)
+  },
+  deleteExtensionState(
+    payload: OusiaExtensionStateDeletePayload
+  ): Promise<OusiaExtensionStateSaveResult> {
+    return ipcRenderer.invoke("ousia:extension-state:delete", payload)
+  },
   sendChatMessage(payload: OusiaChatSendPayload): Promise<OusiaChatSendResult> {
     return ipcRenderer.invoke("ousia:chat:send", payload)
+  },
+  generateChatTitle(
+    payload: OusiaChatGenerateTitlePayload
+  ): Promise<OusiaChatGenerateTitleResult> {
+    return ipcRenderer.invoke("ousia:chat:generate-title", payload)
   },
   getChatHistory(payload: OusiaChatContext): Promise<OusiaChatHistoryResult> {
     return ipcRenderer.invoke("ousia:chat:history", payload)
@@ -41,20 +117,39 @@ const api = {
   openProjectDirectory(): Promise<OusiaOpenProjectResult> {
     return ipcRenderer.invoke("ousia:project:open")
   },
+  ensureWindowWidth(
+    payload: OusiaEnsureWindowWidthPayload
+  ): Promise<OusiaEnsureWindowWidthResult> {
+    return ipcRenderer.invoke("ousia:window:ensure-width", payload)
+  },
+  getWindowFullscreenState(): Promise<OusiaWindowFullscreenResult> {
+    return ipcRenderer.invoke("ousia:window:fullscreen-state")
+  },
   listEditorFiles(
     payload: OusiaEditorListFilesPayload
   ): Promise<OusiaEditorListFilesResult> {
-    return ipcRenderer.invoke("ousia:editor:list-files", payload)
+    return ipcRenderer.invoke("ousia:host:project-files:list", payload)
   },
   readEditorFile(
     payload: OusiaEditorReadFilePayload
   ): Promise<OusiaEditorReadFileResult> {
-    return ipcRenderer.invoke("ousia:editor:read-file", payload)
+    return ipcRenderer.invoke("ousia:host:project-files:read", payload)
   },
   saveEditorFile(
     payload: OusiaEditorSaveFilePayload
   ): Promise<OusiaEditorSaveFileResult> {
-    return ipcRenderer.invoke("ousia:editor:save-file", payload)
+    return ipcRenderer.invoke("ousia:host:project-files:save", payload)
+  },
+  listPdfFiles(
+    payload: OusiaPdfListFilesPayload
+  ): Promise<OusiaPdfListFilesResult> {
+    return ipcRenderer.invoke("ousia:host:project-pdfs:list", payload)
+  },
+  readPdfFile(payload: OusiaPdfReadFilePayload): Promise<OusiaPdfReadFileResult> {
+    return ipcRenderer.invoke("ousia:host:project-pdfs:read", payload)
+  },
+  savePdfFile(payload: OusiaPdfSaveFilePayload): Promise<OusiaPdfSaveFileResult> {
+    return ipcRenderer.invoke("ousia:host:project-pdfs:save", payload)
   },
   listRuntimeExtensions(): Promise<OusiaRuntimeExtensionsResult> {
     return ipcRenderer.invoke("ousia:extensions:list")
@@ -82,25 +177,33 @@ const api = {
       ipcRenderer.off("ousia:extensions:changed", listener)
     }
   },
+  onWorkspaceAction(callback: (event: OusiaWorkspaceAction) => void): () => void {
+    const listener = (_event: IpcRendererEvent, payload: OusiaWorkspaceAction) =>
+      callback(payload)
+    ipcRenderer.on("ousia:workspace:action", listener)
+    return () => {
+      ipcRenderer.off("ousia:workspace:action", listener)
+    }
+  },
   createTerminal(
     payload: OusiaTerminalCreatePayload
   ): Promise<OusiaTerminalCreateResult> {
-    return ipcRenderer.invoke("ousia:terminal:create", payload)
+    return ipcRenderer.invoke("ousia:host:project-pty:create", payload)
   },
   writeTerminal(
     payload: OusiaTerminalWritePayload
   ): Promise<OusiaTerminalOperationResult> {
-    return ipcRenderer.invoke("ousia:terminal:write", payload)
+    return ipcRenderer.invoke("ousia:host:project-pty:write", payload)
   },
   resizeTerminal(
     payload: OusiaTerminalResizePayload
   ): Promise<OusiaTerminalOperationResult> {
-    return ipcRenderer.invoke("ousia:terminal:resize", payload)
+    return ipcRenderer.invoke("ousia:host:project-pty:resize", payload)
   },
   disposeTerminal(
     payload: OusiaTerminalDisposePayload
   ): Promise<OusiaTerminalOperationResult> {
-    return ipcRenderer.invoke("ousia:terminal:dispose", payload)
+    return ipcRenderer.invoke("ousia:host:project-pty:dispose", payload)
   },
   onTerminalEvent(callback: (event: OusiaTerminalEvent) => void): () => void {
     const listener = (_event: IpcRendererEvent, payload: OusiaTerminalEvent) =>
