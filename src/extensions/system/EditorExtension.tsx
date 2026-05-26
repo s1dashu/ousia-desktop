@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
-import { Search01Icon } from "@hugeicons/core-free-icons"
 import { FileTree, useFileTree } from "@pierre/trees/react"
 import { FolderTree, Loader2, Save } from "lucide-react"
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api.js"
@@ -20,6 +19,7 @@ import tsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker"
 import { Button } from "@/components/ui/button"
 import type { OusiaEditorFileEntry } from "@/electron/chat-types"
 import type { ExtensionProps } from "@/extensions/types"
+import type { ResolvedTheme } from "@/components/theme-provider"
 
 const monacoEnvironment = {
   getWorker(_moduleId: string, label: string) {
@@ -41,104 +41,45 @@ const monacoEnvironment = {
 
 type TreeStyle = CSSProperties & Record<`--${string}`, string | number>
 
-const treeStyle: TreeStyle = {
-  "--trees-bg-override": "#181818",
-  "--trees-bg-muted-override": "#2a2d2e",
-  "--trees-selected-bg-override": "#37373d",
-  "--trees-selected-fg-override": "#ffffff",
-  "--trees-fg-override": "#cccccc",
-  "--trees-fg-muted-override": "#858585",
-  "--trees-border-color-override": "#2b2b2b",
-  "--trees-focus-ring-color-override": "#0078d4",
-  "--trees-input-bg-override": "#202020",
-  "--trees-search-bg-override": "#202020",
-  "--trees-search-fg-override": "#cccccc",
-  "--trees-search-font-weight-override": "400",
-  "--trees-font-family-override":
-    "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
-  "--trees-font-size-override": "12px",
-  "--trees-item-height": "28px",
-  "--trees-padding-inline-override": "6px",
-  "--trees-item-margin-x-override": "0px",
-  "--trees-item-padding-x-override": "6px",
-  "--trees-border-radius-override": "0px",
-  height: "100%",
+function createTreeStyle(theme: ResolvedTheme): TreeStyle {
+  return {
+    "--trees-bg-override": theme === "dark" ? "#181818" : "#ffffff",
+    "--trees-bg-muted-override": theme === "dark" ? "#2a2d2e" : "#f6f8fa",
+    "--trees-selected-bg-override": theme === "dark" ? "#37373d" : "#dbeafe",
+    "--trees-selected-fg-override": theme === "dark" ? "#ffffff" : "#111827",
+    "--trees-fg-override": theme === "dark" ? "#cccccc" : "#24292f",
+    "--trees-fg-muted-override": theme === "dark" ? "#858585" : "#6e7781",
+    "--trees-border-color-override": theme === "dark" ? "#2b2b2b" : "#d8dee4",
+    "--trees-focus-ring-color-override": theme === "dark" ? "#0078d4" : "#0969da",
+    "--trees-input-bg-override": theme === "dark" ? "#202020" : "#ffffff",
+    "--trees-font-family-override":
+      "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+    "--trees-font-size-override": "12px",
+    "--trees-item-height": "28px",
+    "--trees-padding-inline-override": "6px",
+    "--trees-item-margin-x-override": "0px",
+    "--trees-item-padding-x-override": "6px",
+    "--trees-border-radius-override": "0px",
+    height: "100%",
+    minHeight: 0,
+    width: "100%",
+  }
 }
-
-function toSvgAttributeName(name: string) {
-  return name.replace(/[A-Z]/g, (value) => `-${value.toLowerCase()}`)
-}
-
-function hugeIconMaskUrl(icon: typeof Search01Icon) {
-  const paths = icon
-    .map(([tag, attributes]) => {
-      const attributeText = Object.entries(attributes)
-        .filter(([name]) => name !== "key")
-        .map(
-          ([name, value]) =>
-            `${toSvgAttributeName(name)}="${String(value).replace(
-              "currentColor",
-              "black"
-            )}"`
-        )
-        .join(" ")
-      return `<${tag} ${attributeText}/>`
-    })
-    .join("")
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">${paths}</svg>`
-  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`
-}
-
-const searchIconMask = hugeIconMaskUrl(Search01Icon)
 
 const treeUnsafeCSS = `
-  [data-file-tree-search-container] {
-    position: relative;
-    padding-inline: 8px;
-    margin-block: 8px 6px;
+  :host,
+  [data-file-tree-virtualized-wrapper='true'],
+  [data-file-tree-virtualized-root='true'] {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: 100%;
   }
 
-  [data-file-tree-search-container]::before {
-    content: "";
-    position: absolute;
-    left: 17px;
-    top: 50%;
-    width: 14px;
-    height: 14px;
-    transform: translateY(-50%);
-    pointer-events: none;
-    opacity: 0.72;
-    background-color: var(--trees-fg-muted);
-    -webkit-mask: ${searchIconMask} center / 14px 14px no-repeat;
-    mask: ${searchIconMask} center / 14px 14px no-repeat;
-  }
-
-  [data-file-tree-search-input] {
-    height: 28px;
-    margin-block: 0;
-    padding-inline: 32px 9px;
-    color: var(--trees-search-fg);
-    background: var(--trees-search-bg);
-    border: 1px solid #2b2b2b;
-    border-radius: 5px;
-    line-height: 28px;
-    box-shadow: none;
-  }
-
-  [data-file-tree-search-input]::placeholder {
-    color: #858585;
-    opacity: 1;
-  }
-
-  [data-file-tree-search-input]:hover {
-    border-color: #3a3a3a;
-  }
-
-  [data-file-tree-search-input]:focus-visible,
-  [data-file-tree-search-input][data-file-tree-search-input-fake-focus='true'] {
-    border-color: #0078d4;
-    outline: 1px solid #0078d4;
-    outline-offset: -1px;
+  [data-file-tree-virtualized-scroll='true'] {
+    flex: 1 1 0;
+    height: auto;
+    min-height: 0;
+    max-height: 100%;
   }
 `
 
@@ -223,25 +164,59 @@ function compactPath(path: string) {
   return `${parts[0]}/.../${parts.slice(-2).join("/")}`
 }
 
+type StoredEditorProjectState = {
+  activePath?: string
+}
+
+type StoredEditorResourceState = {
+  cursor?: {
+    column: number
+    lineNumber: number
+  }
+  scrollLeft?: number
+  scrollTop?: number
+}
+
+function editorProjectStateKey(projectPath: string) {
+  return projectPath || "default"
+}
+
+function editorResourceStateKey(projectPath: string, path: string) {
+  return `${projectPath || "default"}:${path}`
+}
+
 export function EditorExtension({ context }: ExtensionProps) {
   const editorElementRef = useRef<HTMLDivElement | null>(null)
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
+  const activePathRef = useRef("")
   const [files, setFiles] = useState<OusiaEditorFileEntry[]>([])
   const [activePath, setActivePath] = useState("")
-  const [status, setStatus] = useState("Select a file")
+  const [status, setStatus] = useState("选择文件")
   const [isLoadingFiles, setIsLoadingFiles] = useState(false)
   const [isReading, setIsReading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const projectPath = context.project.path
+  const resolvedTheme = context.theme.resolved
+  const treeStyle = useMemo(
+    () => createTreeStyle(resolvedTheme),
+    [resolvedTheme]
+  )
   const treePaths = useMemo(() => files.map((file) => file.path), [files])
+  const editableFilePaths = useMemo(
+    () =>
+      files
+        .filter((file) => file.kind === "file")
+        .map((file) => file.path),
+    [files]
+  )
   const filePathSetRef = useRef(new Set<string>())
   const { model: fileTreeModel } = useFileTree({
     density: "compact",
-    fileTreeSearchMode: "expand-matches",
     flattenEmptyDirectories: true,
     icons: "complete",
     initialExpansion: 2,
+    itemHeight: 28,
     onSelectionChange: (selectedPaths) => {
       const nextPath = selectedPaths.find((path) =>
         filePathSetRef.current.has(path)
@@ -251,17 +226,20 @@ export function EditorExtension({ context }: ExtensionProps) {
       }
     },
     paths: [],
-    search: true,
     unsafeCSS: treeUnsafeCSS,
   })
   const activeFile = useMemo(
-    () => files.find((file) => file.path === activePath),
+    () => files.find((file) => file.kind === "file" && file.path === activePath),
     [activePath, files]
   )
 
   useEffect(() => {
-    filePathSetRef.current = new Set(treePaths)
-  }, [treePaths])
+    filePathSetRef.current = new Set(editableFilePaths)
+  }, [editableFilePaths])
+
+  useEffect(() => {
+    activePathRef.current = activePath
+  }, [activePath])
 
   useEffect(() => {
     const element = editorElementRef.current
@@ -311,7 +289,7 @@ export function EditorExtension({ context }: ExtensionProps) {
     const contentSubscription = editorRef.current.onDidChangeModelContent(
       () => {
         setIsDirty(true)
-        setStatus("Unsaved changes")
+        setStatus("有未保存的修改")
       }
     )
     const selectionSubscription = editorRef.current.onDidChangeCursorSelection(
@@ -319,23 +297,60 @@ export function EditorExtension({ context }: ExtensionProps) {
         editorRef.current?.updateOptions({
           renderLineHighlight: event.selection.isEmpty() ? "line" : "none",
         })
+        const path = activePathRef.current
+        if (!path || !projectPath) {
+          return
+        }
+        void context.state.set(
+          "resource",
+          editorResourceStateKey(projectPath, path),
+          {
+            cursor: event.selection.getPosition(),
+            scrollLeft: editorRef.current?.getScrollLeft() ?? 0,
+            scrollTop: editorRef.current?.getScrollTop() ?? 0,
+          } satisfies StoredEditorResourceState
+        )
       }
     )
+    const scrollSubscription = editorRef.current.onDidScrollChange(() => {
+      const path = activePathRef.current
+      const editor = editorRef.current
+      const cursor = editor?.getPosition()
+      if (!path || !projectPath || !editor) {
+        return
+      }
+      void context.state.set(
+        "resource",
+        editorResourceStateKey(projectPath, path),
+        {
+          ...(cursor ? { cursor } : {}),
+          scrollLeft: editor.getScrollLeft(),
+          scrollTop: editor.getScrollTop(),
+        } satisfies StoredEditorResourceState
+      )
+    })
 
     return () => {
       contentSubscription.dispose()
       selectionSubscription.dispose()
+      scrollSubscription.dispose()
       editorRef.current?.dispose()
       editorRef.current = null
     }
-  }, [])
+  }, [context.state, projectPath])
+
+  useEffect(() => {
+    monaco.editor.setTheme(
+      resolvedTheme === "dark" ? "ousia-vscode-dark" : "ousia-vscode-light"
+    )
+  }, [resolvedTheme])
 
   useEffect(() => {
     if (!projectPath || !window.ousia) {
       queueMicrotask(() => {
         setFiles([])
         setActivePath("")
-        setStatus("Open a project to browse files")
+        setStatus("打开项目后可浏览文件")
       })
       return
     }
@@ -344,22 +359,32 @@ export function EditorExtension({ context }: ExtensionProps) {
     queueMicrotask(() => {
       if (!isCancelled) {
         setIsLoadingFiles(true)
-        setStatus("Loading files...")
+        setStatus("正在加载文件...")
       }
     })
-    window.ousia
-      .listEditorFiles({ projectPath })
-      .then((result) => {
+    Promise.all([
+      window.ousia.listEditorFiles({ projectPath }),
+      context.state.get<StoredEditorProjectState>(
+        "project",
+        editorProjectStateKey(projectPath)
+      ),
+    ])
+      .then(([result, storedState]) => {
         if (isCancelled) {
           return
         }
         setFiles(result.files)
-        const nextPath = result.files[0]?.path ?? ""
+        const storedActivePath = storedState?.activePath
+        const fileEntries = result.files.filter((file) => file.kind === "file")
+        const nextPath =
+          fileEntries.find((file) => file.path === storedActivePath)?.path ??
+          fileEntries[0]?.path ??
+          ""
         setActivePath(nextPath)
         setStatus(
-          result.files.length
-            ? `${result.files.length} files indexed`
-            : "No editable source files found"
+          fileEntries.length
+            ? `已索引 ${fileEntries.length} 个文件`
+            : "未找到可编辑的源文件"
         )
       })
       .catch((error: unknown) => {
@@ -367,7 +392,7 @@ export function EditorExtension({ context }: ExtensionProps) {
           setFiles([])
           setActivePath("")
           setStatus(
-            error instanceof Error ? error.message : "Failed to load files"
+            error instanceof Error ? error.message : "文件加载失败"
           )
         }
       })
@@ -380,7 +405,7 @@ export function EditorExtension({ context }: ExtensionProps) {
     return () => {
       isCancelled = true
     }
-  }, [projectPath])
+  }, [context.state, projectPath])
 
   useEffect(() => {
     if (!activePath || !projectPath || !window.ousia) {
@@ -392,7 +417,7 @@ export function EditorExtension({ context }: ExtensionProps) {
     queueMicrotask(() => {
       if (!isCancelled) {
         setIsReading(true)
-        setStatus(`Opening ${activePath}`)
+        setStatus(`正在打开 ${activePath}`)
       }
     })
     window.ousia
@@ -409,13 +434,31 @@ export function EditorExtension({ context }: ExtensionProps) {
         const previousModel = editorRef.current?.getModel()
         editorRef.current?.setModel(model)
         previousModel?.dispose()
+        void context.state
+          .get<StoredEditorResourceState>(
+            "resource",
+            editorResourceStateKey(projectPath, result.path)
+          )
+          .then((storedState) => {
+            if (isCancelled || !storedState || !editorRef.current) {
+              return
+            }
+            const cursor = storedState.cursor
+            if (cursor) {
+              editorRef.current.setPosition(cursor)
+            }
+            editorRef.current.setScrollPosition({
+              scrollLeft: storedState.scrollLeft ?? 0,
+              scrollTop: storedState.scrollTop ?? 0,
+            })
+          })
         setIsDirty(false)
         setStatus(result.path)
       })
       .catch((error: unknown) => {
         if (!isCancelled) {
           setStatus(
-            error instanceof Error ? error.message : "Failed to open file"
+            error instanceof Error ? error.message : "文件打开失败"
           )
         }
       })
@@ -428,7 +471,16 @@ export function EditorExtension({ context }: ExtensionProps) {
     return () => {
       isCancelled = true
     }
-  }, [activePath, projectPath])
+  }, [activePath, context.state, projectPath])
+
+  useEffect(() => {
+    if (!activePath || !projectPath) {
+      return
+    }
+    void context.state.set("project", editorProjectStateKey(projectPath), {
+      activePath,
+    } satisfies StoredEditorProjectState)
+  }, [activePath, context.state, projectPath])
 
   useEffect(() => {
     fileTreeModel.resetPaths(treePaths)
@@ -456,35 +508,39 @@ export function EditorExtension({ context }: ExtensionProps) {
         content: editorRef.current.getValue(),
       })
       setIsDirty(false)
-      setStatus(`Saved ${activePath}`)
+      setStatus(`已保存 ${activePath}`)
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to save file")
+      setStatus(error instanceof Error ? error.message : "文件保存失败")
     } finally {
       setIsSaving(false)
     }
   }
 
   return (
-    <div className="flex h-full min-h-0 overflow-hidden bg-[#1e1e1e] text-[#cccccc]">
-      <aside className="flex w-[244px] shrink-0 flex-col border-r border-[#2b2b2b] bg-[#181818]">
-        <div className="flex h-9 shrink-0 items-center gap-2 border-b border-[#2b2b2b] px-3 text-xs font-semibold text-[#cccccc]">
+    <div className="flex h-full min-h-0 overflow-hidden bg-[#ffffff] text-[#24292f] dark:bg-[#1e1e1e] dark:text-[#cccccc]">
+      <aside className="flex min-h-0 w-[244px] shrink-0 flex-col overflow-hidden border-r border-[#d8dee4] bg-[#ffffff] dark:border-[#2b2b2b] dark:bg-[#181818]">
+        <div className="flex h-9 shrink-0 items-center gap-2 border-b border-[#d8dee4] px-3 text-xs font-semibold text-[#24292f] dark:border-[#2b2b2b] dark:text-[#cccccc]">
           <FolderTree className="size-4 text-muted-foreground" />
           <span className="min-w-0 truncate">{context.project.name}</span>
         </div>
-        <div className="relative min-h-0 flex-1">
+        <div className="relative min-h-0 flex-1 overflow-hidden">
           {isLoadingFiles ? (
-            <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-2 bg-[#181818] px-3 py-2 text-xs text-[#858585]">
+            <div className="absolute inset-x-0 top-0 z-10 flex items-center gap-2 bg-[#ffffff] px-3 py-2 text-xs text-[#6e7781] dark:bg-[#181818] dark:text-[#858585]">
               <Loader2 className="size-3.5 animate-spin" />
-              Indexing
+              正在索引
             </div>
           ) : null}
-          <FileTree model={fileTreeModel} style={treeStyle} />
+          <FileTree
+            className="absolute inset-0"
+            model={fileTreeModel}
+            style={treeStyle}
+          />
         </div>
       </aside>
 
       <section className="flex min-w-0 flex-1 flex-col">
-        <div className="flex h-9 shrink-0 items-center gap-2 border-b border-[#2b2b2b] bg-[#181818] px-2">
-          <div className="min-w-0 flex-1 truncate font-mono text-xs text-[#cccccc]/80">
+        <div className="flex h-9 shrink-0 items-center gap-2 border-b border-[#d8dee4] bg-[#ffffff] px-2 dark:border-[#2b2b2b] dark:bg-[#181818]">
+          <div className="min-w-0 flex-1 truncate font-mono text-xs text-[#57606a] dark:text-[#cccccc]/80">
             {activeFile ? compactPath(activeFile.path) : status}
           </div>
           <Button
@@ -499,19 +555,19 @@ export function EditorExtension({ context }: ExtensionProps) {
             ) : (
               <Save className="size-4" />
             )}
-            <span>{isDirty ? "Save" : "Saved"}</span>
+            <span>{isDirty ? "保存" : "已保存"}</span>
           </Button>
         </div>
         <div className="relative min-h-0 flex-1">
           <div ref={editorElementRef} className="absolute inset-0" />
           {isReading ? (
-            <div className="pointer-events-none absolute top-3 right-3 flex items-center gap-2 rounded-md border bg-popover px-2 py-1 text-xs text-muted-foreground shadow-sm">
+            <div className="pointer-events-none absolute top-3 right-3 flex items-center gap-2 rounded-md border bg-popover px-2 py-1 text-xs text-muted-foreground dark:shadow-sm">
               <Loader2 className="size-3.5 animate-spin" />
-              Opening
+              正在打开
             </div>
           ) : null}
         </div>
-        <div className="flex h-6 shrink-0 items-center justify-between border-t border-[#2b2b2b] bg-[#181818] px-2 font-mono text-[11px] text-[#cccccc]/75">
+        <div className="flex h-6 shrink-0 items-center justify-between border-t border-[#d8dee4] bg-[#ffffff] px-2 font-mono text-[11px] text-[#57606a] dark:border-[#2b2b2b] dark:bg-[#181818] dark:text-[#cccccc]/75">
           <span className="min-w-0 truncate">{status}</span>
           <span>{languageForPath(activePath)}</span>
         </div>
