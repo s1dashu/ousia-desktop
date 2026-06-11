@@ -8,6 +8,7 @@ This file is an index, not the full project context. Read only the docs that mat
 - UI direction and interaction rules: [docs/design-context.md](docs/design-context.md)
 - Technical architecture: [docs/technical-architecture.md](docs/technical-architecture.md)
 - Extension runtime model: [docs/extension-runtime.md](docs/extension-runtime.md)
+- Extension architecture endgame: [docs/extension-architecture-endgame.md](docs/extension-architecture-endgame.md)
 - Runtime extensions: [docs/runtime-extensions.md](docs/runtime-extensions.md)
 - System extensions feasibility: [docs/system-extensions-feasibility.md](docs/system-extensions-feasibility.md)
 - Streamdown Markdown rendering: [docs/streamdown.md](docs/streamdown.md)
@@ -17,6 +18,18 @@ This file is an index, not the full project context. Read only the docs that mat
 ## High-Signal Facts
 
 - Ousia is an extension-native desktop agent client.
+- Ousia's core blueprint is a powerful, flexible agent plus a rich extension
+  ecosystem.
+- The agent performs most user work; extensions mainly let humans inspect,
+  audit, preview, and lightly intervene in the agent's outputs.
+- Extension context should be agent-visible, including active surface, opened
+  file/resource, selection, view state, and recent user operations.
+- Extensions should expose common actions so the agent can operate them under
+  the user's observation.
+- Agent-facing extension CLI instructions should stay minimal: tell pi to list
+  extensions, call each extension's `help` action before use, and only use
+  actions documented by that help output. Put extension-specific usage details
+  in CLI help, not in pi's extra system prompt.
 - The app shell is assembled from React surfaces: sidebar, chat, and workspace.
 - The first customizable surface is the workspace tab area.
 - First-party bundled extensions are compiled into the app; custom user-authored surfaces live as runtime extension packages under `~/.ousia/extensions`.
@@ -24,6 +37,9 @@ This file is an index, not the full project context. Read only the docs that mat
 - The real coding agent is pi coding agent, hosted in Electron main process.
 - Chat requests include `projectPath` and `sessionId`; pi sessions are isolated by project/session so tool execution uses the selected project as cwd.
 - Default work dir is user configurable and defaults to `~/Desktop`.
+- Runtime logs are persisted at `~/.ousia/logs/ousia-desktop.log`; check this
+  file first for Electron main errors, renderer console messages, renderer
+  uncaught errors, and chat/title-generation failures.
 
 ## Important Source Entrypoints
 
@@ -39,8 +55,12 @@ This file is an index, not the full project context. Read only the docs that mat
 
 - Route runtime extension/plugin/addon/component creation/update/debug/removal to the pi skill at `/Users/bytedance/.pi/agent/skills/ousia-extension/SKILL.md`; Ousia currently uses pi for development, so do not mirror this skill into other agent skill directories.
 - Runtime extensions use `package.json#ousia.app`. Simple extensions can be `package.json + App.tsx`; `src/` is optional.
+- Before adding a first-party extension, prefer the most popular active community stack or component that solves the core problem.
 - Keep `agents.md` short. Put product, design, and technical notes in `docs/`.
 - After code changes, update the relevant docs when the work changes technical stack choices, architecture, or project background, and link those docs from this file.
+- When adding or changing agent-operable extension actions, update the
+  extension's CLI `help` output first; avoid copying action details into pi's
+  extra system prompt.
 - Prefer adding focused docs over expanding this file.
 - Preserve the shadcn preset theme direction unless the user explicitly changes it.
 - Follow the project icon policy in `docs/design-context.md`: use Hugeicons for ordinary, quiet utility icons and Solar icons for high-expression navigation or major workspace/extension signals.

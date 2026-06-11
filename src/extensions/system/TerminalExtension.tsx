@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef } from "react"
 import { FitAddon } from "@xterm/addon-fit"
 import { WebLinksAddon } from "@xterm/addon-web-links"
-import { Terminal } from "@xterm/xterm"
+import { Terminal, type ITheme } from "@xterm/xterm"
 import "@xterm/xterm/css/xterm.css"
 
+import type { ResolvedTheme } from "@/components/theme-provider"
 import type { ExtensionProps } from "@/extensions/types"
 
 function createTerminalId(projectPath: string, sessionId: string) {
@@ -17,6 +18,56 @@ function createTerminalId(projectPath: string, sessionId: string) {
     .slice(2, 8)}`
 }
 
+function createTerminalTheme(theme: ResolvedTheme): ITheme {
+  if (theme === "light") {
+    return {
+      background: "#ffffff",
+      black: "#24292f",
+      blue: "#0969da",
+      brightBlack: "#6e7781",
+      brightBlue: "#218bff",
+      brightCyan: "#1b7c83",
+      brightGreen: "#1a7f37",
+      brightMagenta: "#8250df",
+      brightRed: "#cf222e",
+      brightWhite: "#0f172a",
+      brightYellow: "#9a6700",
+      cursor: "#24292f",
+      cyan: "#1b7c83",
+      foreground: "#24292f",
+      green: "#1a7f37",
+      magenta: "#8250df",
+      red: "#cf222e",
+      selectionBackground: "#add6ff",
+      white: "#57606a",
+      yellow: "#9a6700",
+    }
+  }
+
+  return {
+    background: "#111111",
+    black: "#222222",
+    blue: "#7aa2f7",
+    brightBlack: "#6f6f6f",
+    brightBlue: "#9ab9ff",
+    brightCyan: "#7dcfff",
+    brightGreen: "#b9f27c",
+    brightMagenta: "#d8a4ff",
+    brightRed: "#ff8c8c",
+    brightWhite: "#ffffff",
+    brightYellow: "#ffe28a",
+    cursor: "#f5f5f5",
+    cyan: "#56cfe1",
+    foreground: "#eeeeee",
+    green: "#9ece6a",
+    magenta: "#bb9af7",
+    red: "#f7768e",
+    selectionBackground: "#4a4a4a",
+    white: "#dddddd",
+    yellow: "#e0af68",
+  }
+}
+
 export function TerminalExtension({ context }: ExtensionProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const terminalRef = useRef<Terminal | null>(null)
@@ -27,6 +78,7 @@ export function TerminalExtension({ context }: ExtensionProps) {
     () => createTerminalId(projectPath, sessionId),
     [projectPath, sessionId]
   )
+  const resolvedTheme = context.theme.resolved
 
   useEffect(() => {
     const container = containerRef.current
@@ -50,28 +102,9 @@ export function TerminalExtension({ context }: ExtensionProps) {
       lineHeight: 16 / 14,
       macOptionIsMeta: true,
       scrollback: 6000,
-      theme: {
-        background: "#111111",
-        black: "#222222",
-        blue: "#7aa2f7",
-        brightBlack: "#6f6f6f",
-        brightBlue: "#9ab9ff",
-        brightCyan: "#7dcfff",
-        brightGreen: "#b9f27c",
-        brightMagenta: "#d8a4ff",
-        brightRed: "#ff8c8c",
-        brightWhite: "#ffffff",
-        brightYellow: "#ffe28a",
-        cursor: "#f5f5f5",
-        cyan: "#56cfe1",
-        foreground: "#eeeeee",
-        green: "#9ece6a",
-        magenta: "#bb9af7",
-        red: "#f7768e",
-        selectionBackground: "#4a4a4a",
-        white: "#dddddd",
-        yellow: "#e0af68",
-      },
+      theme: createTerminalTheme(
+        document.documentElement.classList.contains("dark") ? "dark" : "light"
+      ),
     })
 
     terminal.loadAddon(fitAddon)
@@ -108,7 +141,7 @@ export function TerminalExtension({ context }: ExtensionProps) {
       } else if (event.type === "exit") {
         terminal.writeln("")
         terminal.writeln(
-          `[process exited: ${event.exitCode ?? event.signal ?? "unknown"}]`
+          `[进程已退出：${event.exitCode ?? event.signal ?? "未知"}]`
         )
       } else {
         terminal.writeln(`\r\n${event.message}`)
@@ -134,7 +167,7 @@ export function TerminalExtension({ context }: ExtensionProps) {
       })
       .catch((error: unknown) => {
         const message =
-          error instanceof Error ? error.message : "Failed to start terminal"
+          error instanceof Error ? error.message : "终端启动失败"
         terminal.writeln(message)
       })
 
@@ -156,8 +189,14 @@ export function TerminalExtension({ context }: ExtensionProps) {
     }
   }, [projectPath, sessionId, terminalId])
 
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.options.theme = createTerminalTheme(resolvedTheme)
+    }
+  }, [resolvedTheme])
+
   return (
-    <div className="h-full min-h-0 overflow-hidden bg-[#111111] text-white">
+    <div className="h-full min-h-0 overflow-hidden bg-[#ffffff] text-[#24292f] dark:bg-[#111111] dark:text-white">
       <div
         ref={containerRef}
         className="h-full min-h-0 overflow-hidden p-3"

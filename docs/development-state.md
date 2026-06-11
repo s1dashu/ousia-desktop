@@ -20,6 +20,12 @@ Run renderer-only Vite app:
 npm run renderer:dev
 ```
 
+Inspect persisted runtime logs:
+
+```bash
+tail -200 ~/.ousia/logs/ousia-desktop.log
+```
+
 Package with Electron Forge:
 
 ```bash
@@ -45,17 +51,34 @@ Implemented:
 - Hidden inset Electron title bar.
 - Three-column shell with resize.
 - Workspace collapse/expand.
-- Project/session sidebar.
+- Sidebar with a primary session list and a secondary project list.
 - Sidebar collapse via `Command+B` or dragging the resize handle below 120px.
-- Last selected project/session restored from renderer localStorage on refresh.
-- Open local directory as project.
+- Responsive shell collapse: shrinking the window first closes the workspace,
+  then closes the sidebar, down to the chat area's 340px minimum width.
+- Expanding a sidebar from a too-narrow window asks Electron main to grow the
+  native window in the needed direction only enough to preserve the chat
+  minimum width, then animates the panel open with Framer Motion. Workspace
+  responsive reopen preserves the current chat column width when possible and
+  uses a 448px minimum width.
+- Last selected project/session restored from Electron `userData/app-state.json`.
+- Open local directory as project through the native folder picker.
 - Monaco-based workspace editor with project file navigation and save support.
 - xterm.js-based workspace terminal backed by Electron main `node-pty`
   sessions.
 - Create, select, rename, delete sessions.
-- Full-page settings surface for default work dir, model, API key, and thinking level.
-- Default work dir setting, default `~/Desktop`.
+- Full-page settings surface with an inset VS Code-like floating left tab list
+  for appearance, general, and Agent settings. Select controls apply
+  immediately; text inputs apply on blur, so there is no save button.
+- Default work dir setting, default `~/Ousia`.
 - Model, runtime API key, and thinking level settings passed into pi chat turns.
+- First user message in a default `新会话` triggers asynchronous session title
+  generation through a pi-resolved lightweight utility model, capped at 16
+  characters.
+- Electron main and renderer runtime diagnostics are persisted to
+  `~/.ousia/logs/ousia-desktop.log`, including main `console` output,
+  uncaught exceptions, unhandled rejections, renderer console messages,
+  renderer uncaught errors, renderer unhandled rejections, window load failures,
+  process exits, chat errors, and title-generation failures.
 - pi coding agent session creation in Electron main.
 - Agent cwd scoped to selected project.
 - Esc interruption from the focused chat region/input through pi `abort()`.
@@ -67,23 +90,63 @@ Implemented:
   frontend apps declared in `package.json#ousia.app` and automatic refresh from
   Electron main file watching.
 - Renderer project/session/settings/selection persistence is routed through
-  `src/app/app-state.ts`, with `localStorage` as the current adapter.
+  `src/app/app-state.ts` into Electron `src/electron/app-state-store.ts`.
+- App State persists with `schemaVersion: 2`; schema 1 project-nested sessions
+  are migrated into the current top-level session list.
+- Extension-owned local UI state is routed through
+  `ExtensionContext.state` into Electron
+  `src/electron/extension-state-store.ts`, persisted separately from shell
+  app-state at `userData/extension-state.json`.
 - pi chat session caching, history hydration, stream event translation, and
   interruption are routed through `src/electron/agent-conversations.ts`.
+- Electron main is now a composition root; host capabilities are split into
+  `src/electron/project-files.ts`, `src/electron/project-terminal.ts`,
+  `src/electron/window-host.ts`, and `src/electron/host-paths.ts`.
+- Runtime extension frontend compilation, deletion, and file watching are
+  routed through `src/electron/runtime-extensions.ts`.
+- Workspace UI is isolated in `src/features/workspace/Workspace.tsx`.
+- Sidebar and chat UI are isolated in `src/features/sidebar/Sidebar.tsx` and
+  `src/features/chat/ChatArea.tsx`.
+- App State defaults are shared from `src/electron/chat-types.ts` so renderer
+  fallback state and Electron persisted state stay aligned.
+- First-party optional extensions are available in the extension picker but are
+  not opened as default workspace tabs.
+- First-party optional PDF Editor workspace extension, backed by
+  `@embedpdf/react-pdf-viewer`, `pdf-lib`, and project-scoped PDF IPC for
+  listing, syncing, and saving `.pdf` files.
+- First-party optional Excalidraw workspace extension, backed by
+  `@excalidraw/excalidraw`, for standalone whiteboard and sketch editing.
+- First-party optional Excel workspace extension that embeds the Univer Sheets
+  editing surface.
 - Browser extension WebAuthn account selection, with macOS Touch ID / Secure
   Enclave WebAuthn enabled when a matching keychain access group is configured.
 - Workspace supports multiple open tab instances, close-on-hover tab icons, and
   a persistent new-tab button that opens an app-launcher-style extension picker.
 - Open workspace tabs and the active tab are restored globally across projects.
+- Workspace extensions receive their `extensionId` and `tabId` in context so
+  they can persist global, project, tab, or resource scoped state without
+  leaking extension-specific fields into the shell schema.
 - New-tab extension management can bulk-delete runtime extensions.
 - The legacy extension overview surface has been removed from the picker.
+- Local Ousia CLI bridge for agent-visible workspace control. The app installs
+  `~/.ousia/bin/ousia`, starts a token-protected loopback bridge, and lets pi
+  bash sessions invoke first-party extension actions without adding dedicated
+  agent tools.
+- CLI-operable extension usage is help-first: pi's extra prompt lives in
+  `prompts/pi-extra-system-prompt.md` and tells the agent to list extensions,
+  call `help`, avoid unlisted actions, preserve the user's language, and avoid
+  emoji or Markdown in normal conversation. Concrete action names, arguments,
+  examples, and limitations belong in each extension's CLI help output.
+- Generic workspace extension focus through the CLI: `openAndFocus` opens and
+  focuses any registered Ousia workspace extension tab. PDF editor also supports
+  `openFile` to open a current-project PDF inside that editor.
 
 ## Known Gaps
 
-- App State still uses renderer `localStorage` as its storage adapter.
 - Session message history in renderer is in-memory after hydration, with pi
   history loaded on session selection.
 - Rename/delete use local metadata only; deeper pi session file management is not implemented.
+- Default unassigned sessions run in the configured default work dir, currently `~/Ousia`.
 - Runtime extension file watching uses Node `fs.watch`.
 - Runtime extension frontend apps loaded from `~/.ousia/extensions` are
   `user-local` distribution extensions with `local-user` trust. They are not

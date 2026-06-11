@@ -1,38 +1,65 @@
 import { BrowserExtension } from "@/extensions/system/BrowserExtension"
 import { EditorExtension } from "@/extensions/system/EditorExtension"
+import { ExcalidrawExtension } from "@/extensions/system/ExcalidrawExtension"
+import { PdfEditorExtension } from "@/extensions/system/PdfEditorExtension"
 import { TerminalExtension } from "@/extensions/system/TerminalExtension"
+import { UniverSheetsExtension } from "@/extensions/system/UniverSheetsExtension"
 import type { ExtensionDefinition, ExtensionSlotId } from "@/extensions/types"
 
 export const extensionRegistry: ExtensionDefinition[] = [
   {
-    id: "workspace.browser",
-    title: "Browser",
+    id: "extension.firstParty.browser",
+    title: "浏览器",
     slot: "workspace.tab",
     kind: "bundled",
-    distribution: "first-party-bundled",
+    distribution: "first-party-preinstalled",
     trust: "first-party",
-    capabilities: ["browser.webview"],
     component: BrowserExtension,
   },
   {
-    id: "workspace.editor",
-    title: "Editor",
+    id: "extension.firstParty.editor",
+    title: "编辑器",
     slot: "workspace.tab",
     kind: "bundled",
-    distribution: "first-party-bundled",
+    distribution: "first-party-preinstalled",
     trust: "first-party",
-    capabilities: ["project.files"],
     component: EditorExtension,
   },
   {
-    id: "workspace.terminal",
-    title: "Terminal",
+    id: "extension.firstParty.terminal",
+    title: "终端",
     slot: "workspace.tab",
     kind: "bundled",
-    distribution: "first-party-bundled",
+    distribution: "first-party-preinstalled",
     trust: "first-party",
-    capabilities: ["project.pty"],
     component: TerminalExtension,
+  },
+  {
+    id: "extension.firstParty.pdfEditor",
+    title: "PDF 编辑器",
+    slot: "workspace.tab",
+    kind: "bundled",
+    distribution: "first-party-optional",
+    trust: "first-party",
+    component: PdfEditorExtension,
+  },
+  {
+    id: "extension.firstParty.excalidraw",
+    title: "Excalidraw",
+    slot: "workspace.tab",
+    kind: "bundled",
+    distribution: "first-party-optional",
+    trust: "first-party",
+    component: ExcalidrawExtension,
+  },
+  {
+    id: "extension.firstParty.univerSheets",
+    title: "表格",
+    slot: "workspace.tab",
+    kind: "bundled",
+    distribution: "first-party-optional",
+    trust: "first-party",
+    component: UniverSheetsExtension,
   },
 ]
 

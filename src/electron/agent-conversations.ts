@@ -38,6 +38,10 @@ type AgentConversationModuleOptions = {
   emitChatEvent: (event: OusiaChatEvent, context?: OusiaChatContext) => void
 }
 
+function getPiExtraSystemPromptPath() {
+  return join(app.getAppPath(), "prompts", "pi-extra-system-prompt.md")
+}
+
 function now() {
   return new Date().toISOString()
 }
@@ -122,7 +126,7 @@ function findConfiguredModel(
 ) {
   const selected = modelRegistry.find(model.provider, model.modelId)
   if (!selected) {
-    throw new Error(`Unknown model: ${model.provider}/${model.modelId}`)
+    throw new Error(`未知模型：${model.provider}/${model.modelId}`)
   }
   return selected
 }
@@ -134,7 +138,7 @@ async function configureSessionBundle(
 ) {
   const model = normalizeModelSettings(modelSettings)
   if (!model.provider || !model.modelId) {
-    throw new Error("Model provider and model ID are required.")
+    throw new Error("模型服务商和模型 ID 不能为空。")
   }
   applyRuntimeApiKey(bundle, model)
   const selectedModel = findConfiguredModel(bundle.modelRegistry, model)
@@ -215,6 +219,7 @@ function messageEntryToHistoryItems(
           })
         }
       } else if (block.type === "toolCall") {
+        const input = stringifyUnknown(block.arguments) ?? ""
         items.push({
           id:
             typeof block.id === "string"
@@ -222,7 +227,8 @@ function messageEntryToHistoryItems(
               : `${entry.id}-tool-${index}`,
           role: "tool",
           name: typeof block.name === "string" ? block.name : "tool",
-          text: stringifyUnknown(block.arguments) ?? "",
+          text: input,
+          input,
           status: "running",
         })
       }
@@ -235,11 +241,21 @@ function messageEntryToHistoryItems(
     const index = items.findIndex(
       (item) => item.role === "tool" && item.id === toolCallId
     )
+    const existing = index >= 0 ? items[index] : undefined
+    const resultText = textFromContent(message.content)
     const item: OusiaChatHistoryItem = {
       id: toolCallId,
       role: "tool",
-      name: typeof message.toolName === "string" ? message.toolName : "tool",
-      text: textFromContent(message.content),
+      name:
+        typeof message.toolName === "string"
+          ? message.toolName
+          : existing?.role === "tool"
+            ? existing.name
+            : "tool",
+      text: resultText || (existing?.role === "tool" ? existing.text : ""),
+      input: existing?.role === "tool" ? existing.input : undefined,
+      output: message.isError ? undefined : resultText,
+      errorText: message.isError ? resultText : undefined,
       status: message.isError ? "failed" : "finished",
     }
     if (index >= 0) {
@@ -257,6 +273,9 @@ function messageEntryToHistoryItems(
       role: "tool",
       name: "bash",
       text: [command ? `$ ${command}` : "", output].filter(Boolean).join("\n"),
+      input: command,
+      output,
+      errorText: message.exitCode === 0 ? undefined : output,
       status: message.exitCode === 0 ? "finished" : "failed",
     })
     return
@@ -334,7 +353,7 @@ export function createAgentConversationModule({
             text:
               typeof message.errorMessage === "string"
                 ? message.errorMessage
-                : "Agent response failed.",
+                : "智能体响应失败。",
             timestamp,
           },
           context
@@ -492,7 +511,7 @@ export function createAgentConversationModule({
         {
           type: "error",
           id: randomId("error"),
-          text: messageEvent.error?.errorMessage ?? "Agent response failed.",
+          text: messageEvent.error?.errorMessage ?? "智能体响应失败。",
           timestamp,
         },
         context
@@ -510,6 +529,7 @@ export function createAgentConversationModule({
     const userData = app.getPath("userData")
     const agentDir = join(userData, "pi-agent")
     const conversationDir = getConversationDir(context)
+    mkdirSync(cwd, { recursive: true })
     mkdirSync(agentDir, { recursive: true })
     mkdirSync(conversationDir, { recursive: true })
 
@@ -523,6 +543,7 @@ export function createAgentConversationModule({
       cwd,
       agentDir,
       settingsManager,
+      appendSystemPrompt: [getPiExtraSystemPromptPath()],
     })
     await resourceLoader.reload()
     const model = normalizeModelSettings(modelSettings)
@@ -620,8 +641,8 @@ export function createAgentConversationModule({
             role: "error",
             text:
               error instanceof Error
-                ? `Failed to load session history: ${error.message}`
-                : "Failed to load session history.",
+                ? `会话历史加载失败：${error.message}`
+                : "会话历史加载失败。",
           },
         ],
       }
@@ -716,7 +737,7 @@ export function createAgentConversationModule({
           {
             type: "run_status",
             status: "finished",
-            text: "Agent interrupted.",
+            text: "已中断智能体。",
             timestamp: now(),
           },
           context

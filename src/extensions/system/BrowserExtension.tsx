@@ -23,7 +23,10 @@ type BrowserState = {
   canGoForward: boolean
   error: string
   isLoading: boolean
-  title: string
+}
+
+type StoredBrowserTabState = {
+  url?: string
 }
 
 function normalizeAddress(input: string) {
@@ -54,20 +57,19 @@ function formatLoadError(errorCode?: number, errorDescription?: string) {
   if (errorCode === -3) {
     return ""
   }
-  return errorDescription || "Failed to load this page."
+  return errorDescription || "页面加载失败。"
 }
 
-export function BrowserExtension(_props: ExtensionProps) {
-  void _props
+export function BrowserExtension({ context }: ExtensionProps) {
   const webviewRef = useRef<Electron.WebviewTag | null>(null)
   const [address, setAddress] = useState(DEFAULT_URL)
   const [currentUrl, setCurrentUrl] = useState(DEFAULT_URL)
+  const [isStateLoaded, setIsStateLoaded] = useState(false)
   const [browserState, setBrowserState] = useState<BrowserState>({
     canGoBack: false,
     canGoForward: false,
     error: "",
     isLoading: false,
-    title: "",
   })
   const readNavigationState = useCallback(
     (webview: Electron.WebviewTag | null) => {
@@ -75,7 +77,6 @@ export function BrowserExtension(_props: ExtensionProps) {
         return {
           canGoBack: false,
           canGoForward: false,
-          title: "",
         }
       }
 
@@ -83,13 +84,11 @@ export function BrowserExtension(_props: ExtensionProps) {
         return {
           canGoBack: webview.canGoBack(),
           canGoForward: webview.canGoForward(),
-          title: webview.getTitle(),
         }
       } catch {
         return {
           canGoBack: false,
           canGoForward: false,
-          title: "",
         }
       }
     },
@@ -103,7 +102,6 @@ export function BrowserExtension(_props: ExtensionProps) {
         ...state,
         canGoBack: navigationState.canGoBack,
         canGoForward: navigationState.canGoForward,
-        title: navigationState.title || state.title,
         ...next,
       }))
     },
@@ -116,6 +114,39 @@ export function BrowserExtension(_props: ExtensionProps) {
     setCurrentUrl(nextUrl)
     setBrowserState((state) => ({ ...state, error: "" }))
   }
+
+  useEffect(() => {
+    let isCancelled = false
+    const key = context.tabId ?? "default"
+    void context.state
+      .get<StoredBrowserTabState>("tab", key)
+      .then((state) => {
+        if (isCancelled) {
+          return
+        }
+        const url = state?.url?.trim()
+        if (url) {
+          setAddress(url)
+          setCurrentUrl(url)
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsStateLoaded(true)
+        }
+      })
+    return () => {
+      isCancelled = true
+    }
+  }, [context.state, context.tabId])
+
+  useEffect(() => {
+    if (!isStateLoaded) {
+      return
+    }
+    const key = context.tabId ?? "default"
+    void context.state.set("tab", key, { url: currentUrl })
+  }, [context.state, context.tabId, currentUrl, isStateLoaded])
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -155,9 +186,6 @@ export function BrowserExtension(_props: ExtensionProps) {
       setCurrentUrl(nextUrl)
       updateNavigationState({ error: "" })
     }
-    const handleTitle = () => {
-      updateNavigationState()
-    }
     const handleFail = (event: Electron.DidFailLoadEvent) => {
       if (!event.isMainFrame) {
         return
@@ -172,7 +200,6 @@ export function BrowserExtension(_props: ExtensionProps) {
     webview.addEventListener("did-stop-loading", handleStopLoading)
     webview.addEventListener("did-navigate", handleNavigation)
     webview.addEventListener("did-navigate-in-page", handleNavigation)
-    webview.addEventListener("page-title-updated", handleTitle)
     webview.addEventListener("did-fail-load", handleFail)
 
     return () => {
@@ -180,7 +207,6 @@ export function BrowserExtension(_props: ExtensionProps) {
       webview.removeEventListener("did-stop-loading", handleStopLoading)
       webview.removeEventListener("did-navigate", handleNavigation)
       webview.removeEventListener("did-navigate-in-page", handleNavigation)
-      webview.removeEventListener("page-title-updated", handleTitle)
       webview.removeEventListener("did-fail-load", handleFail)
     }
   }, [currentUrl, updateNavigationState])
@@ -192,7 +218,7 @@ export function BrowserExtension(_props: ExtensionProps) {
           type="button"
           variant="ghost"
           size="icon-xs"
-          aria-label="Go back"
+          aria-label="后退"
           disabled={!browserState.canGoBack}
           onClick={() => webviewRef.current?.goBack()}
         >
@@ -202,7 +228,7 @@ export function BrowserExtension(_props: ExtensionProps) {
           type="button"
           variant="ghost"
           size="icon-xs"
-          aria-label="Go forward"
+          aria-label="前进"
           disabled={!browserState.canGoForward}
           onClick={() => webviewRef.current?.goForward()}
         >
@@ -212,7 +238,7 @@ export function BrowserExtension(_props: ExtensionProps) {
           type="button"
           variant="ghost"
           size="icon-xs"
-          aria-label={browserState.isLoading ? "Stop loading" : "Reload"}
+          aria-label={browserState.isLoading ? "停止加载" : "重新加载"}
           onClick={() =>
             browserState.isLoading
               ? webviewRef.current?.stop()
@@ -237,16 +263,16 @@ export function BrowserExtension(_props: ExtensionProps) {
           )}
           <input
             className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            aria-label="Browser address"
+            aria-label="浏览器地址"
             value={address}
-            placeholder="Enter a URL or search"
+            placeholder="输入网址或搜索内容"
             onChange={(event) => setAddress(event.target.value)}
           />
           <Button
             type="submit"
             variant="ghost"
             size="icon-xs"
-            aria-label="Load address"
+            aria-label="打开地址"
           >
             <Search className="size-4" />
           </Button>
@@ -256,22 +282,16 @@ export function BrowserExtension(_props: ExtensionProps) {
           type="button"
           variant="ghost"
           size="icon-xs"
-          aria-label="Open in external browser"
+          aria-label="在外部浏览器中打开"
           onClick={openExternal}
         >
           <ExternalLink className="size-4" />
         </Button>
       </div>
 
-      {browserState.title ? (
-        <div className="truncate border-b px-3 py-1 text-xs text-muted-foreground">
-          {browserState.title}
-        </div>
-      ) : null}
-
       <div className="relative min-h-0 flex-1 bg-background">
         {browserState.error ? (
-          <div className="absolute inset-x-4 top-4 z-10 flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm shadow-sm">
+          <div className="absolute inset-x-4 top-4 z-10 flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm dark:shadow-sm">
             <ShieldAlert className="size-4 shrink-0 text-destructive" />
             <span className="min-w-0 truncate">{browserState.error}</span>
           </div>
