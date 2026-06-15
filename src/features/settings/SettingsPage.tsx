@@ -45,15 +45,15 @@ import { cn } from "@/lib/utils"
 const appearanceColorScales: Array<{
   label: string
   value: OusiaAppearanceColorScale
-  description: string
 }> = [
-  { label: "Tea", value: "tea", description: "" },
-  { label: "Paper", value: "paper", description: "#FAFAF8 paper surfaces" },
-  { label: "Sand", value: "sand", description: "" },
-  { label: "Gray", value: "gray", description: "" },
-  { label: "Slate", value: "slate", description: "" },
-  { label: "Mauve", value: "mauve", description: "" },
-  { label: "Sage", value: "sage", description: "" },
+  { label: "Tea", value: "tea" },
+  { label: "Glass", value: "glass" },
+  { label: "Paper", value: "paper" },
+  { label: "Sand", value: "sand" },
+  { label: "Gray", value: "gray" },
+  { label: "Slate", value: "slate" },
+  { label: "Mauve", value: "mauve" },
+  { label: "Sage", value: "sage" },
 ]
 
 type SettingsPageProps = {
@@ -353,13 +353,9 @@ export function SettingsPage({
     setIsAddProviderDialogOpen(true)
   }
 
-  const selectedColorScaleDescription = appearanceColorScales.find(
-    (scale) => scale.value === draft.appearanceColorScale
-  )?.description
-
   return (
-    <section className="@container/settings ousia-main-panel ousia-squircle-corners flex min-w-0 flex-1 flex-col overflow-hidden rounded-[var(--ousia-panel-radius)] border border-border/60 bg-white dark:bg-card">
-      <header className="window-drag grid h-10 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b pr-4 pl-4">
+    <section className="@container/settings ousia-main-panel ousia-squircle-corners flex min-w-0 flex-1 flex-col overflow-hidden rounded-l-[var(--ousia-chat-panel-radius)] rounded-r-[var(--ousia-chat-panel-radius)] border-[0.5px] border-l-0 border-border/60 bg-[var(--ousia-chat-panel-bg)] shadow-[var(--ousia-chat-panel-shadow)]">
+      <header className="window-drag grid h-10 shrink-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-border/70 pr-4 pl-4">
         <div
           className={cn(
             "window-drag flex min-w-0 items-center self-stretch",
@@ -386,7 +382,7 @@ export function SettingsPage({
           </Button>
         </div>
       </header>
-      <div className="ousia-hover-scrollbar min-h-0 flex-1 overflow-auto px-[var(--ousia-settings-gutter)] py-8">
+      <div className="ousia-hover-scrollbar min-h-0 flex-1 overflow-auto bg-transparent px-[var(--ousia-settings-gutter)] py-8">
         <div className={settingsContentClass}>
           <section className={settingsSectionClass}>
             <h2 className="text-sm font-semibold">{t.settings.general}</h2>
@@ -486,6 +482,34 @@ export function SettingsPage({
             </div>
 
             <div className={settingsFieldClass}>
+              <span className={settingsLabelClass}>{t.settings.colorScale}</span>
+              <Select
+                items={appearanceColorScales}
+                value={draft.appearanceColorScale}
+                onValueChange={(value) =>
+                  applySettings({
+                    appearanceColorScale: value as OusiaAppearanceColorScale,
+                  })
+                }
+              >
+                <SelectTrigger
+                  aria-label={t.settings.colorScale}
+                  className={settingsControlClass}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="start">
+                  <SelectGroup>
+                    {appearanceColorScales.map((scale) => (
+                      <SelectItem key={scale.value} value={scale.value}>
+                        {scale.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className={settingsFieldClass}>
               <span className={settingsLabelClass}>
                 {t.settings.appFontFamily}
               </span>
@@ -556,42 +580,6 @@ export function SettingsPage({
                 </div>
               ) : null}
             </div>
-
-            <div className={settingsFieldClass}>
-              <span className={settingsLabelClass}>
-                {t.settings.colorScale}
-              </span>
-              <Select
-                items={appearanceColorScales}
-                value={draft.appearanceColorScale}
-                onValueChange={(value) =>
-                  applySettings({
-                    appearanceColorScale: value as OusiaAppearanceColorScale,
-                  })
-                }
-              >
-                <SelectTrigger
-                  aria-label={t.settings.colorScale}
-                  className={settingsControlClass}
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent align="start">
-                  <SelectGroup>
-                    {appearanceColorScales.map((scale) => (
-                      <SelectItem key={scale.value} value={scale.value}>
-                        {scale.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-            {selectedColorScaleDescription ? (
-              <div className={settingsHelpClass}>
-                {selectedColorScaleDescription}
-              </div>
-            ) : null}
           </section>
 
           <section className={settingsSectionClass}>
@@ -855,7 +843,7 @@ export function SettingsPage({
                     type="button"
                     variant="ghost"
                     size="icon-sm"
-                    className="ousia-squircle-corners mt-0.5 rounded-lg text-neutral-500 hover:bg-neutral-100 hover:text-neutral-950 active:scale-[0.96]"
+                    className="ousia-squircle-corners mt-0.5 rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground active:scale-[0.96]"
                     aria-label={t.app.close}
                     onClick={() => setIsAddProviderDialogOpen(false)}
                   >
@@ -878,7 +866,7 @@ export function SettingsPage({
                   >
                     <SelectTrigger
                       aria-label={t.settings.provider}
-                      className="ousia-squircle-corners mt-2 w-full rounded-xl border-[0.5px] border-foreground/10 bg-white hover:bg-white"
+                      className="ousia-squircle-corners mt-2 w-full rounded-xl border-[0.5px] border-foreground/10 bg-background/70 hover:bg-background/80"
                     >
                       <SelectValue placeholder={t.settings.chooseProvider} />
                     </SelectTrigger>
@@ -900,7 +888,7 @@ export function SettingsPage({
                   </span>
                   <Input
                     aria-label="API Key"
-                    className="ousia-squircle-corners mt-2 rounded-xl border-[0.5px] border-foreground/10 bg-white focus-visible:bg-white disabled:cursor-default disabled:bg-neutral-50 disabled:text-neutral-500 disabled:opacity-100"
+                    className="ousia-squircle-corners mt-2 rounded-xl border-[0.5px] border-foreground/10 bg-background/70 focus-visible:bg-background/80 disabled:cursor-default disabled:bg-muted/40 disabled:text-muted-foreground disabled:opacity-100"
                     disabled={newProviderUsesEnvironment}
                     value={newProviderUsesEnvironment ? "" : newProviderApiKey}
                     onChange={(event) =>
@@ -941,7 +929,7 @@ export function SettingsPage({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="ousia-squircle-corners h-10 rounded-2xl border-[0.5px] border-foreground/10 bg-white px-5 text-neutral-950 hover:bg-neutral-50 active:scale-[0.96]"
+                    className="ousia-squircle-corners h-10 rounded-2xl border-[0.5px] border-foreground/10 bg-background/70 px-5 text-foreground hover:bg-muted/55 active:scale-[0.96]"
                     onClick={() => setIsAddProviderDialogOpen(false)}
                   >
                     {t.app.cancel}
@@ -949,7 +937,7 @@ export function SettingsPage({
                   <Button
                     type="button"
                     size="sm"
-                    className="ousia-squircle-corners h-10 rounded-2xl bg-neutral-950 px-5 text-white hover:bg-neutral-800 active:scale-[0.96]"
+                    className="ousia-squircle-corners h-10 rounded-2xl bg-primary px-5 text-primary-foreground hover:bg-primary/90 active:scale-[0.96]"
                     disabled={!canAddProvider}
                     onClick={addProvider}
                   >

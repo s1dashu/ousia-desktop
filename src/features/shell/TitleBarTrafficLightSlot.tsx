@@ -38,7 +38,7 @@ export function TitleBarSidebarToggle({
         type="button"
         variant="ghost"
         size="icon-sm"
-        className="window-no-drag pointer-events-auto hover:bg-transparent focus-visible:bg-transparent"
+        className="window-no-drag ousia-squircle-corners pointer-events-auto size-6 rounded-lg hover:bg-[var(--sidebar-accent)] focus-visible:bg-[var(--sidebar-accent)]"
         aria-label={label}
         onClick={onClick}
       >

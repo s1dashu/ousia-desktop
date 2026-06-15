@@ -1,4 +1,5 @@
 import {
+  memo,
   useEffect,
   useMemo,
   useRef,
@@ -52,6 +53,7 @@ const sidebarProjectSessionGridClass = "grid-cols-[24px_minmax(0,1fr)_24px]"
 const sidebarRowXClass = "pl-2 pr-0"
 const sidebarSessionRowXClass =
   "-mx-[5px] w-[calc(100%+10px)] pl-[13px] pr-[5px]"
+const sidebarProjectSessionRowXClass = "w-full pl-[13px] pr-2"
 const sidebarListGapClass = "flex flex-col gap-0.5"
 const sidebarSectionHeaderXClass = "pl-2 pr-0"
 const sidebarProjectSessionCompactCount = 5
@@ -59,7 +61,7 @@ const sidebarProjectSessionPreviewCount = 10
 const sidebarRowStateClass =
   "text-sidebar-accent-foreground hover:bg-[var(--sidebar-accent)]"
 const sidebarSelectedRowClass =
-  "bg-white text-sidebar-accent-foreground shadow-[var(--ousia-sidebar-selected-shadow)] dark:bg-card"
+  "bg-[var(--ousia-sidebar-selected-bg)] text-sidebar-accent-foreground shadow-[var(--ousia-sidebar-selected-shadow)]"
 const sidebarGhostActionClass =
   "hover:bg-[var(--sidebar-accent)] hover:text-sidebar-accent-foreground"
 const defaultSessionGroupId = "default"
@@ -114,7 +116,7 @@ type SortableSessionRowProps = {
   onSelectSession: (sessionId: string) => void
   onStartRename: (session: SessionRecord) => void
   projectChild?: boolean
-  selectedSessionId: string
+  isSelectedSession: boolean
   session: SessionRecord
   sessionRunStatus: "idle" | "working"
   t: I18nMessages
@@ -223,11 +225,12 @@ function DragPreview({
   )
 }
 
-function SortableSessionRow({
+const SortableSessionRow = memo(function SortableSessionRow({
   editingInputRef,
   editingSessionId,
   editingSessionTitle,
   groupId,
+  isSelectedSession,
   onCancelRename,
   onCommitRename,
   onDeleteSession,
@@ -235,7 +238,6 @@ function SortableSessionRow({
   onSelectSession,
   onStartRename,
   projectChild,
-  selectedSessionId,
   session,
   sessionRunStatus,
   t,
@@ -259,7 +261,6 @@ function SortableSessionRow({
     transform: CSS.Transform.toString(transform),
   }
   const isSessionWorking = sessionRunStatus === "working"
-  const isSelectedSession = session.id === selectedSessionId
 
   return (
     <div
@@ -270,7 +271,7 @@ function SortableSessionRow({
         isSelectedSession ? sidebarSelectedRowClass : sidebarRowStateClass,
         projectChild ? "gap-x-0 gap-y-1" : "gap-1",
         projectChild ? sidebarProjectSessionGridClass : sidebarSingleActionGridClass,
-        sidebarSessionRowXClass,
+        projectChild ? sidebarProjectSessionRowXClass : sidebarSessionRowXClass,
         isDragging ? "opacity-35" : "",
       ].join(" ")}
       onClick={() => {
@@ -360,6 +361,22 @@ function SortableSessionRow({
         </Button>
       </div>
     </div>
+  )
+}, areSessionRowsEqual)
+
+function areSessionRowsEqual(
+  previous: SortableSessionRowProps,
+  next: SortableSessionRowProps
+) {
+  return (
+    previous.editingSessionId === next.editingSessionId &&
+    previous.editingSessionTitle === next.editingSessionTitle &&
+    previous.groupId === next.groupId &&
+    previous.isSelectedSession === next.isSelectedSession &&
+    previous.projectChild === next.projectChild &&
+    previous.session === next.session &&
+    previous.sessionRunStatus === next.sessionRunStatus &&
+    previous.t === next.t
   )
 }
 
@@ -557,7 +574,7 @@ function SortableSidebarSection({
   )
 }
 
-export function Sidebar({
+export const Sidebar = memo(function Sidebar({
   onCreateProjectSession,
   onCreateSession,
   onDeleteProject,
@@ -593,7 +610,25 @@ export function Sidebar({
   const [dragPreview, setDragPreview] = useState<SidebarDragPreview | null>(null)
   const editingInputRef = useRef<HTMLInputElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const defaultSessions = sessions.filter((session) => !session.projectId)
+  const defaultSessions = useMemo(
+    () => sessions.filter((session) => !session.projectId),
+    [sessions]
+  )
+  const sessionsByProjectId = useMemo(() => {
+    const next = new Map<string, SessionRecord[]>()
+    for (const session of sessions) {
+      if (!session.projectId) {
+        continue
+      }
+      const projectSessions = next.get(session.projectId)
+      if (projectSessions) {
+        projectSessions.push(session)
+      } else {
+        next.set(session.projectId, [session])
+      }
+    }
+    return next
+  }, [sessions])
   const sidebarInnerWidth =
     typeof style.width === "number" ? Math.max(176, style.width - 24) : 220
   const visibleSidebarSectionOrder =
@@ -614,6 +649,14 @@ export function Sidebar({
       expandedProjectIds.filter((projectId) => projectIds.has(projectId))
     )
   }, [expandedProjectIds, projects])
+  const defaultSessionIds = useMemo(
+    () => defaultSessions.map((session) => session.id),
+    [defaultSessions]
+  )
+  const projectIds = useMemo(
+    () => projects.map((project) => project.id),
+    [projects]
+  )
 
   useEffect(() => {
     if (!editingSessionId) {
@@ -743,6 +786,7 @@ export function Sidebar({
         editingSessionId={editingSessionId}
         editingSessionTitle={editingSessionTitle}
         groupId={options.groupId}
+        isSelectedSession={session.id === selectedSessionId}
         onCancelRename={cancelRenameSession}
         onCommitRename={commitRenameSession}
         onDeleteSession={onDeleteSession}
@@ -750,7 +794,6 @@ export function Sidebar({
         onSelectSession={onSelectSession}
         onStartRename={startRenameSession}
         projectChild={options.projectChild}
-        selectedSessionId={selectedSessionId}
         session={session}
         sessionRunStatus={sessionRunStatusById[session.id] ?? "idle"}
         t={t}
@@ -771,7 +814,7 @@ export function Sidebar({
         onToggleCollapsed={toggleSidebarSection}
       >
         <SortableContext
-          items={defaultSessions.map((session) => session.id)}
+          items={defaultSessionIds}
           strategy={verticalListSortingStrategy}
         >
           <div className={sidebarListGapClass}>
@@ -805,15 +848,13 @@ export function Sidebar({
         onToggleCollapsed={toggleSidebarSection}
       >
         <SortableContext
-          items={projects.map((project) => project.id)}
+          items={projectIds}
           strategy={verticalListSortingStrategy}
         >
           <div className={sidebarListGapClass}>
             {projects.map((project) => {
               const isExpanded = visibleExpandedProjectIds.has(project.id)
-              const projectSessions = sessions.filter(
-                (session) => session.projectId === project.id
-              )
+              const projectSessions = sessionsByProjectId.get(project.id) ?? []
               const canCompactProjectSessions =
                 projectSessions.length > sidebarProjectSessionPreviewCount
               const isProjectSessionListCompact = compactProjectSessionIds.includes(
@@ -903,7 +944,7 @@ export function Sidebar({
 
   return (
     <aside
-      className="ousia-sidebar-shell flex min-h-0 shrink-0 flex-col bg-sidebar text-sidebar-foreground"
+      className="ousia-sidebar-shell flex min-h-0 shrink-0 flex-col bg-[var(--ousia-sidebar-glass)] text-sidebar-foreground"
       style={style}
     >
       <div className="window-drag h-10 shrink-0" />
@@ -954,4 +995,4 @@ export function Sidebar({
       </div>
     </aside>
   )
-}
+})

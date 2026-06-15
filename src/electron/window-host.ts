@@ -36,6 +36,10 @@ function isExternalUrl(url: string) {
 }
 
 function resolveInitialWindowBackground(theme: OusiaThemePreference) {
+  if (platform === "darwin") {
+    return "#00000000"
+  }
+
   const resolvedTheme =
     theme === "system"
       ? nativeTheme.shouldUseDarkColors
@@ -287,6 +291,9 @@ export function createWindowHost({ onClosed, onWindowChanged }: WindowHostOption
       title: "Ousia",
       titleBarStyle: "hiddenInset",
       trafficLightPosition: { x: 14, y: 15 },
+      transparent: platform === "darwin",
+      vibrancy: platform === "darwin" ? "under-window" : undefined,
+      visualEffectState: platform === "darwin" ? "active" : undefined,
       backgroundColor: resolveInitialWindowBackground(appState.settings.theme),
       webPreferences: {
         contextIsolation: true,
@@ -294,6 +301,9 @@ export function createWindowHost({ onClosed, onWindowChanged }: WindowHostOption
         preload: join(__dirname, "preload.js"),
       },
     })
+    if (platform === "darwin") {
+      mainWindow.setVibrancy("under-window")
+    }
     if (appState.windowState.isMaximized) {
       mainWindow.maximize()
     }

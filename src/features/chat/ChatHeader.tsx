@@ -23,7 +23,6 @@ type ChatHeaderProps = {
   currentSession: SessionRecord | undefined
   isSessionMenuOpen: boolean
   isSidebarCollapsed: boolean
-  isScrolled: boolean
   isTerminalPanelCollapsed: boolean
   isWindowFullscreen: boolean
   onCopySessionHistory: () => void
@@ -38,7 +37,6 @@ export function ChatHeader({
   currentSession,
   isSessionMenuOpen,
   isSidebarCollapsed,
-  isScrolled,
   isTerminalPanelCollapsed,
   isWindowFullscreen,
   onCopySessionHistory,
@@ -50,10 +48,7 @@ export function ChatHeader({
   return (
     <header
       className={cn(
-        "window-drag absolute top-0 right-0 left-px z-30 grid h-10 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-tl-[calc(var(--ousia-chat-panel-radius)-1px)] pr-4 pl-4 transition-[background-color,box-shadow,backdrop-filter]",
-        isScrolled
-          ? "bg-white shadow-none dark:bg-card"
-          : "bg-white shadow-none dark:bg-card"
+        "window-drag absolute top-0 right-0 left-px z-30 grid h-10 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-tl-[calc(var(--ousia-chat-panel-radius)-1px)] bg-[var(--ousia-chat-header-bg)] pr-4 pl-4 shadow-none transition-[background-color,box-shadow,backdrop-filter]"
       )}
     >
       <div
@@ -87,13 +82,13 @@ export function ChatHeader({
               className="w-auto rounded-md p-1"
             >
               <DropdownMenuItem
-                className="gap-2 rounded-sm px-2 py-1.5 hover:bg-neutral-100 focus:bg-neutral-100"
+                className="gap-2 rounded-sm px-2 py-1.5"
                 onClick={onCopySessionHistory}
               >
                 {copyStatus === "copied" ? (
-                  <Check size={18} className="text-neutral-500" />
+                  <Check size={18} className="text-muted-foreground" />
                 ) : (
-                  <Copy size={18} className="text-neutral-500" />
+                  <Copy size={18} className="text-muted-foreground" />
                 )}
                 <span className="flex-1">
                   {copyStatus === "copied"
@@ -104,24 +99,24 @@ export function ChatHeader({
                 </span>
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="gap-2 rounded-sm px-2 py-1.5 hover:bg-neutral-100 focus:bg-neutral-100"
+                className="gap-2 rounded-sm px-2 py-1.5"
                 onClick={() => onExportSession("markdown")}
               >
-                <Copy size={18} className="text-neutral-500" />
+                <Copy size={18} className="text-muted-foreground" />
                 <span className="flex-1">{t.chat.exportMarkdown}</span>
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="gap-2 rounded-sm px-2 py-1.5 hover:bg-neutral-100 focus:bg-neutral-100"
+                className="gap-2 rounded-sm px-2 py-1.5"
                 onClick={() => onExportSession("html")}
               >
-                <Copy size={18} className="text-neutral-500" />
+                <Copy size={18} className="text-muted-foreground" />
                 <span className="flex-1">{t.chat.exportHtml}</span>
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="gap-2 rounded-sm px-2 py-1.5 hover:bg-neutral-100 focus:bg-neutral-100"
+                className="gap-2 rounded-sm px-2 py-1.5"
                 onClick={() => onExportSession("jsonl")}
               >
-                <Copy size={18} className="text-neutral-500" />
+                <Copy size={18} className="text-muted-foreground" />
                 <span className="flex-1">{t.chat.exportJsonl}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -134,7 +129,7 @@ export function ChatHeader({
             type="button"
             variant="ghost"
             size="icon-sm"
-            className="window-no-drag size-6 rounded-md hover:bg-transparent focus-visible:bg-transparent"
+            className="window-no-drag ousia-squircle-corners size-6 rounded-lg hover:bg-[var(--sidebar-accent)] focus-visible:bg-[var(--sidebar-accent)]"
             aria-label={t.chat.openTerminal}
             onClick={onExpandTerminalPanel}
           >
