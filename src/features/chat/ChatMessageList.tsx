@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils"
 type ChatMessageListProps = {
   items: ChatItem[]
   onBranchFromMessage: (itemId: string) => void
+  projectPath?: string
+  sessionId?: string
   showTurnWaitIndicator: boolean
   t: ReturnType<typeof getMessages>
 }
@@ -27,6 +29,8 @@ type ChatMessageListProps = {
 export const ChatMessageList = memo(function ChatMessageList({
   items,
   onBranchFromMessage,
+  projectPath,
+  sessionId,
   showTurnWaitIndicator,
   t,
 }: ChatMessageListProps) {
@@ -35,12 +39,19 @@ export const ChatMessageList = memo(function ChatMessageList({
       {items.length ? (
         <>
           {items.map((item) => (
-            <ChatItemView
-              item={item}
+            <div
+              className="ousia-chat-message-contain"
+              data-chat-message-role={item.role}
               key={item.id}
-              onBranchFromMessage={onBranchFromMessage}
-              t={t}
-            />
+            >
+              <ChatItemView
+                item={item}
+                onBranchFromMessage={onBranchFromMessage}
+                projectPath={projectPath}
+                sessionId={sessionId}
+                t={t}
+              />
+            </div>
           ))}
           {showTurnWaitIndicator ? <AgentTurnWaitIndicator t={t} /> : null}
         </>
@@ -52,10 +63,14 @@ export const ChatMessageList = memo(function ChatMessageList({
 const ChatItemView = memo(function ChatItemView({
   item,
   onBranchFromMessage,
+  projectPath,
+  sessionId,
   t,
 }: {
   item: ChatItem
   onBranchFromMessage: (itemId: string) => void
+  projectPath?: string
+  sessionId?: string
   t: ReturnType<typeof getMessages>
 }) {
   if (item.role === "thinking") {
@@ -71,7 +86,14 @@ const ChatItemView = memo(function ChatItemView({
   }
 
   if (item.role === "tool") {
-    return <ToolCallView item={item} t={t} />
+    return (
+      <ToolCallView
+        item={item}
+        projectPath={projectPath}
+        sessionId={sessionId}
+        t={t}
+      />
+    )
   }
 
   if (item.role === "system" || item.role === "error") {
@@ -99,6 +121,7 @@ const ChatItemView = memo(function ChatItemView({
       {item.role === "assistant" ? (
         <Streamdown
           mode={item.status === "streaming" ? "streaming" : "static"}
+          animated
           isAnimating={item.status === "streaming"}
           linkSafety={{ enabled: false }}
           className="ousia-chat-markdown space-y-0 text-sm leading-5 break-words"
@@ -147,29 +170,34 @@ function AssistantMessageFooter({
     : ""
 
   return (
-    <div className="mt-2 flex h-5 items-center gap-1.5 text-muted-foreground/70 opacity-0 transition-opacity group-hover/message:opacity-100 group-focus-within/message:opacity-100">
+    <div className="mt-2 flex h-5 items-center gap-1 text-muted-foreground/70 opacity-0 transition-opacity group-hover/message:opacity-100 group-focus-within/message:opacity-100">
       <button
         type="button"
-        className="flex size-5 items-center justify-center rounded-md hover:bg-muted/60 hover:text-foreground"
+        className="flex size-4.5 items-center justify-center rounded-md hover:bg-muted/60 hover:text-foreground"
         aria-label={t.chat.copyMessage}
         title={t.chat.copyMessage}
         onClick={() => {
           void navigator.clipboard?.writeText(item.text)
         }}
       >
-        <Copy size={16} strokeWidth={1.5} />
+        <Copy size={14} strokeWidth={1.5} />
       </button>
       <button
         type="button"
-        className="flex size-5 items-center justify-center rounded-md hover:bg-muted/60 hover:text-foreground"
+        className="flex size-4.5 items-center justify-center rounded-md hover:bg-muted/60 hover:text-foreground"
         aria-label={t.chat.branchFromMessage}
         title={t.chat.branchFromMessage}
         onClick={() => onBranchFromMessage(item.id)}
       >
-        <GitBranchPlus size={16} strokeWidth={1.5} />
+        <GitBranchPlus size={14} strokeWidth={1.5} />
       </button>
       {timeLabel ? (
-        <span className="text-xs leading-none tabular-nums">{timeLabel}</span>
+        <span
+          className="ml-1 text-xs leading-none tabular-nums"
+          style={{ fontFamily: "var(--font-sans-default)" }}
+        >
+          {timeLabel}
+        </span>
       ) : null}
     </div>
   )

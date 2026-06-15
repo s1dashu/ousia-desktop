@@ -10,6 +10,7 @@ Current renderer configuration:
 ```tsx
 <Streamdown
   mode={item.status === "streaming" ? "streaming" : "static"}
+  animated
   isAnimating={item.status === "streaming"}
   linkSafety={{ enabled: false }}
   className="ousia-chat-markdown space-y-0 break-words text-sm leading-5"

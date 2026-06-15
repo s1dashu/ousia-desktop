@@ -1,4 +1,10 @@
-import { useLayoutEffect, useRef, useState, type ReactElement } from "react"
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactElement,
+} from "react"
 import {
   ChevronDown,
   CircleAlert,
@@ -30,19 +36,42 @@ type ToolStatusIcon = (props: {
 
 export function ToolCallView({
   item,
+  projectPath,
+  sessionId,
   t,
 }: {
   item: ToolChatItem
+  projectPath?: string
+  sessionId?: string
   t: ReturnType<typeof getMessages>
 }) {
   const shouldAutoExpand = item.status === "running" && shouldAutoExpandTool(item.name)
   const [isOpen, setIsOpen] = useState(shouldAutoExpand)
+  const [loadedItem, setLoadedItem] = useState<ToolChatItem | null>(null)
+  const [isLoadingPayload, setIsLoadingPayload] = useState(false)
   const hasManualOpenStateRef = useRef(false)
-  const input = item.input ?? (item.status === "running" ? item.text : "")
-  const output = item.output ?? (item.status === "finished" ? item.text : "")
-  const errorText = item.errorText ?? (item.status === "failed" ? item.text : "")
-  const status = getToolStatus(item.status, t)
+  const displayItem = loadedItem?.id === item.id ? loadedItem : item
+  const input =
+    displayItem.input ?? (displayItem.status === "running" ? displayItem.text : "")
+  const output =
+    displayItem.output ??
+    (displayItem.status === "finished" && !displayItem.payloadOmitted
+      ? displayItem.text
+      : "")
+  const errorText =
+    displayItem.errorText ??
+    (displayItem.status === "failed" && !displayItem.payloadOmitted
+      ? displayItem.text
+      : "")
+  const status = getToolStatus(displayItem.status, t)
   const StatusIcon = status.icon
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setLoadedItem(null)
+      setIsLoadingPayload(false)
+    })
+  }, [item.id])
 
   useLayoutEffect(() => {
     let timer: number | undefined
@@ -67,6 +96,54 @@ export function ToolCallView({
     }
   }, [item.name, item.status, shouldAutoExpand])
 
+  useEffect(() => {
+    if (
+      !isOpen ||
+      !item.payloadOmitted ||
+      loadedItem?.id === item.id ||
+      isLoadingPayload ||
+      !window.ousia ||
+      !projectPath ||
+      !sessionId
+    ) {
+      return
+    }
+    let isCancelled = false
+    queueMicrotask(() => {
+      if (isCancelled) {
+        return
+      }
+      setIsLoadingPayload(true)
+      void window.ousia
+        ?.getChatToolPayload({
+          itemId: item.id,
+          projectPath,
+          sessionId,
+        })
+        .then((result) => {
+          if (!isCancelled && result.ok) {
+            setLoadedItem(result.item)
+          }
+        })
+        .finally(() => {
+          if (!isCancelled) {
+            setIsLoadingPayload(false)
+          }
+        })
+    })
+    return () => {
+      isCancelled = true
+    }
+  }, [
+    isLoadingPayload,
+    isOpen,
+    item.id,
+    item.payloadOmitted,
+    loadedItem?.id,
+    projectPath,
+    sessionId,
+  ])
+
   return (
     <div className="overflow-hidden rounded-lg bg-muted/25 text-xs text-card-foreground">
       <button
@@ -79,10 +156,10 @@ export function ToolCallView({
         }}
       >
         <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-background/70 text-muted-foreground">
-          {renderToolIcon(item.name)}
+          {renderToolIcon(displayItem.name)}
         </span>
         <span className="min-w-0 flex-1 truncate font-medium">
-          {formatToolName(item.name)}
+          {formatToolName(displayItem.name)}
         </span>
         <span
           className={cn(
@@ -109,7 +186,10 @@ export function ToolCallView({
 
       {isOpen ? (
         <div className="bg-muted/15 px-3 py-3">
-          <ToolPayloadSection title={t.chat.toolArgs} value={input || "{}"} />
+          <ToolPayloadSection
+            title={t.chat.toolArgs}
+            value={isLoadingPayload ? "Loading..." : input || "{}"}
+          />
           {errorText ? (
             <ToolPayloadSection
               title={t.chat.toolError}

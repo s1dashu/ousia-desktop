@@ -131,6 +131,17 @@ export function applyChatEvent(items: ChatItem[], event: OusiaChatEvent): ChatIt
       }
     }
   } else if (event.type === "run_status") {
+    if (event.status === "finished") {
+      for (let index = 0; index < next.length; index += 1) {
+        const item = next[index]
+        if (item.role === "tool" && item.status === "running") {
+          next[index] = {
+            ...item,
+            status: "finished",
+          }
+        }
+      }
+    }
     if (event.text) {
       next.push({
         id: `status-${event.timestamp}`,

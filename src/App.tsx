@@ -1,8 +1,11 @@
 import {
+  startTransition,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type PointerEvent,
 } from "react"
 
@@ -46,6 +49,8 @@ const MIN_CHAT_WIDTH = 300
 const MIN_TERMINAL_PANEL_WIDTH = 400
 const MIN_TERMINAL_PANEL_COMPACT_WIDTH = 100
 const RESIZE_HANDLE_WIDTH = 1
+const CHAT_HISTORY_PREVIEW_LIMIT = 50
+const CHAT_HISTORY_PREFETCH_COUNT = 5
 
 type AgentRunStatus = "idle" | "working"
 type QueuedChatState = {
@@ -57,6 +62,7 @@ type ChatContextUsageState = {
   contextWindow: number
   percent: number | null
 }
+type ChatHistoryLoadState = "loading-preview" | "preview" | "loading-full" | "full"
 type TextDeltaChatEvent = Extract<
   OusiaChatEvent,
   { type: "assistant_text_delta" | "thinking_delta" }
@@ -67,6 +73,15 @@ function clamp(value: number, min: number, max: number) {
 
 function chatKey(projectPath: string, sessionId: string) {
   return `${projectPath}::${sessionId}`
+}
+
+function scheduleIdleWork(callback: () => void) {
+  if ("requestIdleCallback" in window) {
+    const id = window.requestIdleCallback(callback, { timeout: 1200 })
+    return () => window.cancelIdleCallback(id)
+  }
+  const id = window.setTimeout(callback, 120)
+  return () => window.clearTimeout(id)
 }
 
 function canMergeTextDeltaEvents(
@@ -161,7 +176,7 @@ function ResizeHandle({
 }) {
   return (
     <div
-      className="relative z-10 flex w-px shrink-0 flex-col"
+      className={`relative z-10 flex shrink-0 flex-col ${showLine ? "w-px" : "w-0"}`}
     >
       <div
         aria-hidden="true"
@@ -173,7 +188,7 @@ function ResizeHandle({
       />
       <div
         aria-label={label}
-        className="window-no-drag group relative min-h-0 flex-1"
+        className="window-no-drag group relative min-h-0 flex-1 overflow-visible"
         onPointerDown={onPointerDown}
         role="separator"
         tabIndex={0}
@@ -190,6 +205,8 @@ export function App() {
   const [initialState] = useState<InitialAppState>(() => createDefaultAppState())
   const [isAppStateLoaded, setIsAppStateLoaded] = useState(!window.ousia)
   const shellRef = useRef<HTMLElement>(null)
+  const sidebarShellRef = useRef<HTMLDivElement>(null)
+  const terminalPanelShellRef = useRef<HTMLDivElement>(null)
   const [sidebarWidth, setSidebarWidth] = useState(
     initialState.shellLayout.sidebarWidth
   )
@@ -239,8 +256,13 @@ export function App() {
   const [itemsBySession, setItemsBySession] = useState<
     Record<string, ChatItem[]>
   >({})
+  const [historyLoadStateBySession, setHistoryLoadStateBySession] = useState<
+    Record<string, ChatHistoryLoadState>
+  >({})
   const pendingChatEventsRef = useRef<Map<string, OusiaChatEvent[]>>(new Map())
   const pendingChatEventsFrameRef = useRef(0)
+  const sidebarResizeFrameRef = useRef(0)
+  const terminalPanelResizeFrameRef = useRef(0)
   const [runStatusBySession, setRunStatusBySession] = useState<
     Record<string, AgentRunStatus>
   >({})
@@ -273,18 +295,34 @@ export function App() {
   const selectedItems = selectedChatKey
     ? (itemsBySession[selectedChatKey] ?? [])
     : []
-  const selectedQueuedChatState = selectedChatKey
-    ? (queuedChatStateBySession[selectedChatKey] ?? {
-        steering: [],
-        followUp: [],
-      })
-    : {
-        steering: [],
-        followUp: [],
-      }
+  const selectedQueuedChatState = useMemo(
+    () =>
+      selectedChatKey
+        ? (queuedChatStateBySession[selectedChatKey] ?? {
+            steering: [],
+            followUp: [],
+          })
+        : {
+            steering: [],
+            followUp: [],
+          },
+    [queuedChatStateBySession, selectedChatKey]
+  )
   const selectedContextUsage = selectedChatKey
     ? contextUsageBySession[selectedChatKey]
     : undefined
+  const projectPathForSession = useCallback(
+    (session: SessionRecord) => {
+      if (!session.projectId) {
+        return settings.defaultWorkDir
+      }
+      return (
+        projects.find((project) => project.id === session.projectId)?.path ??
+        settings.defaultWorkDir
+      )
+    },
+    [projects, settings.defaultWorkDir]
+  )
   const createAppStateSnapshot = useCallback(
     (nextSettings: AppSettings = settings): InitialAppState => ({
       schemaVersion: APP_STATE_SCHEMA_VERSION,
@@ -484,8 +522,11 @@ export function App() {
     if (!isAppStateLoaded) {
       return
     }
+    if (isShellResizing) {
+      return
+    }
     void saveAppState(createAppStateSnapshot())
-  }, [createAppStateSnapshot, isAppStateLoaded])
+  }, [createAppStateSnapshot, isAppStateLoaded, isShellResizing])
 
   useEffect(() => {
     sessionsRef.current = sessions
@@ -499,40 +540,217 @@ export function App() {
     if (
       !window.ousia ||
       !selectedSession ||
-      !selectedChatKey ||
+      !selectedChatKey
+    ) {
+      return
+    }
+    const loadState = historyLoadStateBySession[selectedChatKey]
+    if (
+      loadState === "loading-preview" ||
+      loadState === "loading-full" ||
+      loadState === "preview" ||
+      loadState === "full" ||
       itemsBySession[selectedChatKey]?.length
     ) {
       return
     }
 
     let isCancelled = false
-    window.ousia
-      .getChatHistory({
-        projectPath: currentProject.path,
-        sessionId: selectedSession.id,
-      })
-      .then((history) => {
-        if (isCancelled || !history.items.length) {
-          return
-        }
-        setItemsBySession((current) => {
-          if (current[selectedChatKey]?.length) {
-            return current
+    queueMicrotask(() => {
+      if (isCancelled) {
+        return
+      }
+      setHistoryLoadStateBySession((current) => ({
+        ...current,
+        [selectedChatKey]: "loading-preview",
+      }))
+      void window.ousia
+        ?.getChatHistory({
+          includeToolPayloads: false,
+          limit: CHAT_HISTORY_PREVIEW_LIMIT,
+          projectPath: currentProject.path,
+          sessionId: selectedSession.id,
+        })
+        .then((history) => {
+          if (isCancelled) {
+            return
           }
-          return {
-            ...current,
-            [selectedChatKey]: history.items,
+          startTransition(() => {
+            setItemsBySession((current) => {
+              if (current[selectedChatKey]?.length) {
+                return current
+              }
+              if (!history.items.length) {
+                return current
+              }
+              return {
+                ...current,
+                [selectedChatKey]: history.items,
+              }
+            })
+            setHistoryLoadStateBySession((current) => ({
+              ...current,
+              [selectedChatKey]: history.isPartial ? "preview" : "full",
+            }))
+          })
+        })
+        .catch(() => {
+          if (!isCancelled) {
+            setHistoryLoadStateBySession((current) => {
+              const next = { ...current }
+              delete next[selectedChatKey]
+              return next
+            })
           }
         })
-      })
-      .catch(() => {
-        // History hydration is best-effort; live chat still works.
-      })
+    })
 
     return () => {
       isCancelled = true
     }
-  }, [itemsBySession, selectedChatKey, currentProject.path, selectedSession])
+  }, [
+    currentProject.path,
+    historyLoadStateBySession,
+    itemsBySession,
+    selectedChatKey,
+    selectedSession,
+  ])
+
+  useEffect(() => {
+    if (!window.ousia || !isAppStateLoaded || !sessions.length) {
+      return
+    }
+    let isCancelled = false
+    const cancelIdleWork = scheduleIdleWork(() => {
+      if (isCancelled) {
+        return
+      }
+      const candidates = sessions
+        .filter((session) => session.id !== selectedSession?.id)
+        .slice(0, CHAT_HISTORY_PREFETCH_COUNT)
+      for (const session of candidates) {
+        const projectPath = projectPathForSession(session)
+        const targetKey = chatKey(projectPath, session.id)
+        if (
+          itemsBySession[targetKey]?.length ||
+          historyLoadStateBySession[targetKey]
+        ) {
+          continue
+        }
+        setHistoryLoadStateBySession((current) => ({
+          ...current,
+          [targetKey]: "loading-preview",
+        }))
+        void window.ousia
+          ?.getChatHistory({
+            includeToolPayloads: false,
+            limit: CHAT_HISTORY_PREVIEW_LIMIT,
+            projectPath,
+            sessionId: session.id,
+          })
+          .then((history) => {
+            if (isCancelled) {
+              return
+            }
+            startTransition(() => {
+              setItemsBySession((current) =>
+                current[targetKey]?.length || !history.items.length
+                  ? current
+                  : {
+                      ...current,
+                      [targetKey]: history.items,
+                    }
+              )
+              setHistoryLoadStateBySession((current) => ({
+                ...current,
+                [targetKey]: history.isPartial ? "preview" : "full",
+              }))
+            })
+          })
+          .catch(() => {
+            if (!isCancelled) {
+              setHistoryLoadStateBySession((current) => {
+                const next = { ...current }
+                delete next[targetKey]
+                return next
+              })
+            }
+          })
+      }
+    })
+    return () => {
+      isCancelled = true
+      cancelIdleWork()
+    }
+  }, [
+    historyLoadStateBySession,
+    isAppStateLoaded,
+    itemsBySession,
+    projectPathForSession,
+    selectedSession?.id,
+    sessions,
+  ])
+
+  useEffect(() => {
+    if (
+      !window.ousia ||
+      !selectedSession ||
+      !selectedChatKey ||
+      historyLoadStateBySession[selectedChatKey] !== "preview"
+    ) {
+      return
+    }
+
+    let isCancelled = false
+    const cancelIdleWork = scheduleIdleWork(() => {
+      if (isCancelled) {
+        return
+      }
+      setHistoryLoadStateBySession((current) => ({
+        ...current,
+        [selectedChatKey]: "loading-full",
+      }))
+      window.ousia
+        ?.getChatHistory({
+          includeToolPayloads: false,
+          projectPath: currentProject.path,
+          sessionId: selectedSession.id,
+        })
+        .then((history) => {
+          if (isCancelled) {
+            return
+          }
+          startTransition(() => {
+            setItemsBySession((current) => ({
+              ...current,
+              [selectedChatKey]: history.items,
+            }))
+            setHistoryLoadStateBySession((current) => ({
+              ...current,
+              [selectedChatKey]: "full",
+            }))
+          })
+        })
+        .catch(() => {
+          if (!isCancelled) {
+            setHistoryLoadStateBySession((current) => ({
+              ...current,
+              [selectedChatKey]: "preview",
+            }))
+          }
+        })
+    })
+
+    return () => {
+      isCancelled = true
+      cancelIdleWork()
+    }
+  }, [
+    currentProject.path,
+    historyLoadStateBySession,
+    selectedChatKey,
+    selectedSession,
+  ])
 
   useEffect(() => {
     return window.ousia?.onChatEvent((event) => {
@@ -594,6 +812,12 @@ export function App() {
     return () => {
       if (pendingChatEventsFrameRef.current) {
         window.cancelAnimationFrame(pendingChatEventsFrameRef.current)
+      }
+      if (sidebarResizeFrameRef.current) {
+        window.cancelAnimationFrame(sidebarResizeFrameRef.current)
+      }
+      if (terminalPanelResizeFrameRef.current) {
+        window.cancelAnimationFrame(terminalPanelResizeFrameRef.current)
       }
       pendingChatEventsRef.current = new Map()
     }
@@ -766,6 +990,13 @@ export function App() {
       }
       return next
     })
+    setHistoryLoadStateBySession((current) => {
+      const next = { ...current }
+      for (const session of removedSessions) {
+        delete next[chatKey(project.path, session.id)]
+      }
+      return next
+    })
 
     if (selectedSession?.projectId === projectId) {
       const nextSession = remainingSessions[0]
@@ -781,16 +1012,6 @@ export function App() {
 
   function handleOpenSettings() {
     setIsSettingsOpen(true)
-  }
-
-  function projectPathForSession(session: SessionRecord) {
-    if (!session.projectId) {
-      return settings.defaultWorkDir
-    }
-    return (
-      projects.find((project) => project.id === session.projectId)?.path ??
-      settings.defaultWorkDir
-    )
   }
 
   function handleRenameSession(sessionId: string, title: string) {
@@ -954,6 +1175,11 @@ export function App() {
       delete next[chatKey(projectPathForSession(session), sessionId)]
       return next
     })
+    setHistoryLoadStateBySession((current) => {
+      const next = { ...current }
+      delete next[chatKey(projectPathForSession(session), sessionId)]
+      return next
+    })
     if (selectedSessionId === sessionId) {
       const nextSession = remaining[0]
       setSelectedSessionId(nextSession?.id ?? "")
@@ -1031,11 +1257,35 @@ export function App() {
     const startX = event.clientX
     const startSidebarWidth = sidebarWidth
     const shellWidth = getShellWidth()
+    let pendingSidebarWidth = startSidebarWidth
+
+    function commitSidebarWidth(nextSidebarWidth: number) {
+      pendingSidebarWidth = nextSidebarWidth
+      if (sidebarResizeFrameRef.current) {
+        return
+      }
+      sidebarResizeFrameRef.current = window.requestAnimationFrame(() => {
+        sidebarResizeFrameRef.current = 0
+        sidebarShellRef.current?.style.setProperty(
+          "--ousia-sidebar-live-width",
+          `${pendingSidebarWidth}px`
+        )
+      })
+    }
 
     function stopSidebarResize() {
       if (resizeTarget.hasPointerCapture(event.pointerId)) {
         resizeTarget.releasePointerCapture(event.pointerId)
       }
+      if (sidebarResizeFrameRef.current) {
+        window.cancelAnimationFrame(sidebarResizeFrameRef.current)
+        sidebarResizeFrameRef.current = 0
+      }
+      sidebarShellRef.current?.style.setProperty(
+        "--ousia-sidebar-live-width",
+        `${pendingSidebarWidth}px`
+      )
+      setSidebarWidth(pendingSidebarWidth)
       window.removeEventListener("pointermove", handlePointerMove)
       window.removeEventListener("pointerup", handlePointerUp)
       window.removeEventListener("pointercancel", handlePointerUp)
@@ -1065,7 +1315,7 @@ export function App() {
         MIN_SIDEBAR_WIDTH,
         Math.max(MIN_SIDEBAR_WIDTH, maxSidebarWidth)
       )
-      setSidebarWidth(nextSidebarWidth)
+      commitSidebarWidth(nextSidebarWidth)
     }
 
     function handlePointerUp() {
@@ -1086,6 +1336,21 @@ export function App() {
     const startX = event.clientX
     const startTerminalPanelWidth = terminalPanelWidth
     const shellWidth = getShellWidth()
+    let pendingTerminalPanelWidth = startTerminalPanelWidth
+
+    function commitTerminalPanelWidth(nextTerminalPanelWidth: number) {
+      pendingTerminalPanelWidth = nextTerminalPanelWidth
+      if (terminalPanelResizeFrameRef.current) {
+        return
+      }
+      terminalPanelResizeFrameRef.current = window.requestAnimationFrame(() => {
+        terminalPanelResizeFrameRef.current = 0
+        terminalPanelShellRef.current?.style.setProperty(
+          "--ousia-terminal-live-width",
+          `${pendingTerminalPanelWidth}px`
+        )
+      })
+    }
 
     function handlePointerMove(moveEvent: globalThis.PointerEvent) {
       const maxTerminalPanelWidth =
@@ -1098,13 +1363,22 @@ export function App() {
         MIN_TERMINAL_PANEL_COMPACT_WIDTH,
         Math.max(MIN_TERMINAL_PANEL_COMPACT_WIDTH, maxTerminalPanelWidth)
       )
-      setTerminalPanelWidth(nextTerminalPanelWidth)
+      commitTerminalPanelWidth(nextTerminalPanelWidth)
     }
 
     function handlePointerUp() {
       if (resizeTarget.hasPointerCapture(event.pointerId)) {
         resizeTarget.releasePointerCapture(event.pointerId)
       }
+      if (terminalPanelResizeFrameRef.current) {
+        window.cancelAnimationFrame(terminalPanelResizeFrameRef.current)
+        terminalPanelResizeFrameRef.current = 0
+      }
+      terminalPanelShellRef.current?.style.setProperty(
+        "--ousia-terminal-live-width",
+        `${pendingTerminalPanelWidth}px`
+      )
+      setTerminalPanelWidth(pendingTerminalPanelWidth)
       window.removeEventListener("pointermove", handlePointerMove)
       window.removeEventListener("pointerup", handlePointerUp)
       window.removeEventListener("pointercancel", handlePointerUp)
@@ -1119,7 +1393,8 @@ export function App() {
   }
 
   const shouldShowTerminalPanel = isTerminalPanelOpen
-  const shouldRenderTerminalPanel = isAppStateLoaded && hasTerminalPanelMounted
+  const shouldRenderTerminalPanel =
+    isAppStateLoaded && hasTerminalPanelMounted && shouldShowTerminalPanel
   const shouldShowChatArea = !isTerminalPanelSolo
 
   const expandSidebar = useCallback(() => {
@@ -1158,7 +1433,7 @@ export function App() {
     <main
       ref={shellRef}
       data-shell-resizing={isShellResizing ? "true" : undefined}
-      className="relative flex h-screen overflow-hidden rounded-[var(--ousia-window-radius)] bg-sidebar text-foreground"
+      className="relative flex h-screen min-h-screen w-screen min-w-0 overflow-hidden rounded-[var(--ousia-window-radius)] bg-[var(--ousia-shell-glass)] text-foreground"
     >
       <div
         aria-hidden={zoomIndicatorPercent === null}
@@ -1173,7 +1448,15 @@ export function App() {
         {zoomIndicatorPercent ?? 100}%
       </div>
       {isSidebarCollapsed ? null : (
-        <div className="relative z-0 flex shrink-0 overflow-hidden">
+        <div
+          ref={sidebarShellRef}
+          className="relative z-0 flex shrink-0 overflow-hidden"
+          style={
+            {
+              "--ousia-sidebar-live-width": `${effectiveSidebarWidth}px`,
+            } as CSSProperties
+          }
+        >
           <Sidebar
             onCreateProjectSession={createProjectSession}
             onCreateSession={handleCreateSession}
@@ -1196,7 +1479,7 @@ export function App() {
             sessionRunStatusById={runStatusBySession}
             sessions={sessions}
             language={settings.language}
-            style={{ width: effectiveSidebarWidth }}
+            style={{ width: "var(--ousia-sidebar-live-width)" }}
           />
           <ResizeHandle
             label={t.shell.resizeSidebar}
@@ -1204,7 +1487,7 @@ export function App() {
           />
         </div>
       )}
-      <div className="relative z-20 min-w-0 flex-1 bg-sidebar">
+      <div className="relative z-20 min-w-0 flex-1 bg-[var(--ousia-shell-glass)]">
         <div className="flex h-full min-w-0 overflow-visible">
           {isSettingsOpen ? (
             <SettingsPage
@@ -1219,7 +1502,6 @@ export function App() {
             <>
               {shouldShowChatArea ? (
                 <ChatArea
-                  key={selectedChatKey}
                   currentProject={selectedSession ? currentProject : undefined}
                   currentSession={selectedSession}
                   items={selectedItems}
@@ -1256,6 +1538,7 @@ export function App() {
               ) : null}
               {shouldRenderTerminalPanel ? (
                 <div
+                  ref={terminalPanelShellRef}
                   aria-hidden={!shouldShowTerminalPanel}
                   className={
                     shouldShowTerminalPanel
@@ -1264,7 +1547,10 @@ export function App() {
                   }
                   style={
                     shouldShowTerminalPanel
-                      ? { width: effectiveTerminalPanelWidth }
+                      ? ({
+                          "--ousia-terminal-live-width": `${effectiveTerminalPanelWidth}px`,
+                          width: "var(--ousia-terminal-live-width)",
+                        } as CSSProperties)
                       : undefined
                   }
                 >
