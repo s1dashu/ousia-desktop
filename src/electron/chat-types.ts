@@ -13,6 +13,7 @@ export type OusiaThinkingLevel =
 
 export const OUSIA_APPEARANCE_COLOR_SCALES = [
   "tea",
+  "glass",
   "paper",
   "sand",
   "gray",
@@ -451,6 +452,7 @@ export type OusiaChatHistoryItem =
       input?: string
       output?: string
       errorText?: string
+      payloadOmitted?: boolean
       status: "running" | "finished" | "failed"
     }
 
@@ -586,9 +588,30 @@ export type OusiaChatSendPayload = OusiaChatContext & {
   model: OusiaModelSettings
 }
 
-export type OusiaChatHistoryResult = {
-  items: OusiaChatHistoryItem[]
+export type OusiaChatHistoryPayload = OusiaChatContext & {
+  includeToolPayloads?: boolean
+  limit?: number
 }
+
+export type OusiaChatHistoryResult = {
+  isPartial?: boolean
+  items: OusiaChatHistoryItem[]
+  totalItems?: number
+}
+
+export type OusiaChatToolPayloadPayload = OusiaChatContext & {
+  itemId: string
+}
+
+export type OusiaChatToolPayloadResult =
+  | {
+      ok: true
+      item: Extract<OusiaChatHistoryItem, { role: "tool" }>
+    }
+  | {
+      ok: false
+      error: string
+    }
 
 export type OusiaChatBranchPayload = OusiaChatContext & {
   messageId: string
@@ -684,7 +707,9 @@ export type OusiaTerminalResizePayload = OusiaTerminalContext & {
   rows: number
 }
 
-export type OusiaTerminalDisposePayload = OusiaTerminalContext
+export type OusiaTerminalDisposePayload = OusiaTerminalContext & {
+  keepAlive?: boolean
+}
 
 export type OusiaTerminalOperationResult = {
   ok: boolean

@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs"
+import { stat } from "node:fs/promises"
 import { createRequire } from "node:module"
 import { dirname, join } from "node:path"
 import { homedir } from "node:os"
@@ -23,6 +24,7 @@ import type {
   OusiaChatBranchResult,
   OusiaChatEvent,
   OusiaChatHistoryItem,
+  OusiaChatHistoryPayload,
   OusiaChatHistoryResult,
   OusiaChatInterruptPayload,
   OusiaChatInterruptResult,
@@ -33,6 +35,8 @@ import type {
   OusiaChatExportResult,
   OusiaChatSendPayload,
   OusiaChatSendResult,
+  OusiaChatToolPayloadPayload,
+  OusiaChatToolPayloadResult,
   OusiaAgentMode,
   OusiaModelSettings,
   OusiaThinkingLevel,
@@ -64,6 +68,18 @@ type AgentStreamState = {
   toolDisplayIdsByContentIndex: Map<number, string>
   toolDisplayIdsByProviderId: Map<string, string>
   startedToolIds: Set<string>
+  activeToolIds: Set<string>
+}
+
+type HistoryBuildOptions = {
+  includeToolPayloads: boolean
+}
+
+type HistoryCacheEntry = {
+  fullItems?: OusiaChatHistoryItem[]
+  lightweightItems?: OusiaChatHistoryItem[]
+  mtimeMs: number
+  sessionFile: string
 }
 
 function now() {
@@ -82,6 +98,7 @@ function createStreamState(): AgentStreamState {
     toolDisplayIdsByContentIndex: new Map(),
     toolDisplayIdsByProviderId: new Map(),
     startedToolIds: new Set(),
+    activeToolIds: new Set(),
   }
 }
 
@@ -93,6 +110,25 @@ function displayToolCallId(
     return undefined
   }
   return state.toolDisplayIdsByProviderId.get(providerToolCallId) ?? providerToolCallId
+}
+
+function finishActiveTools(
+  state: AgentStreamState,
+  context: OusiaChatContext,
+  emitChatEvent: (event: OusiaChatEvent, context?: OusiaChatContext) => void,
+  timestamp = now()
+) {
+  for (const toolId of state.activeToolIds) {
+    emitChatEvent(
+      {
+        type: "tool_end",
+        id: toolId,
+        timestamp,
+      },
+      context
+    )
+  }
+  state.activeToolIds.clear()
 }
 
 function stringifyUnknown(value: unknown) {
@@ -107,6 +143,14 @@ function stringifyUnknown(value: unknown) {
   } catch {
     return String(value)
   }
+}
+
+function previewText(value: string, maxLength = 180) {
+  const normalized = value.replace(/\s+/g, " ").trim()
+  if (normalized.length <= maxLength) {
+    return normalized
+  }
+  return `${normalized.slice(0, maxLength).trimEnd()}...`
 }
 
 function escapeHtml(value: string) {
@@ -441,7 +485,8 @@ function imageContentFromAttachments(
 
 function messageEntryToHistoryItems(
   entry: SessionMessageEntry,
-  items: OusiaChatHistoryItem[]
+  items: OusiaChatHistoryItem[],
+  options: HistoryBuildOptions = { includeToolPayloads: true }
 ) {
   const message = entry.message as unknown as Record<string, unknown>
   const role = message.role
@@ -495,8 +540,9 @@ function messageEntryToHistoryItems(
               : `${entry.id}-tool-${index}`,
           role: "tool",
           name: typeof block.name === "string" ? block.name : "tool",
-          text: input,
-          input,
+          text: options.includeToolPayloads ? input : previewText(input || "{}"),
+          input: options.includeToolPayloads ? input : undefined,
+          payloadOmitted: options.includeToolPayloads ? undefined : true,
           status: "running",
         })
       }
@@ -511,6 +557,9 @@ function messageEntryToHistoryItems(
     )
     const existing = index >= 0 ? items[index] : undefined
     const resultText = textFromContent(message.content)
+    const text = message.isError
+      ? resultText
+      : resultText || (existing?.role === "tool" ? existing.text : "")
     const item: OusiaChatHistoryItem = {
       id: toolCallId,
       role: "tool",
@@ -518,12 +567,18 @@ function messageEntryToHistoryItems(
         typeof message.toolName === "string"
           ? message.toolName
           : existing?.role === "tool"
-            ? existing.name
-            : "tool",
-      text: resultText || (existing?.role === "tool" ? existing.text : ""),
-      input: existing?.role === "tool" ? existing.input : undefined,
-      output: message.isError ? undefined : resultText,
-      errorText: message.isError ? resultText : undefined,
+          ? existing.name
+          : "tool",
+      text: options.includeToolPayloads ? text : previewText(text),
+      input:
+        options.includeToolPayloads && existing?.role === "tool"
+          ? existing.input
+          : undefined,
+      output:
+        options.includeToolPayloads && !message.isError ? resultText : undefined,
+      errorText:
+        options.includeToolPayloads && message.isError ? resultText : undefined,
+      payloadOmitted: options.includeToolPayloads ? undefined : true,
       status: message.isError ? "failed" : "finished",
     }
     if (index >= 0) {
@@ -536,14 +591,17 @@ function messageEntryToHistoryItems(
   if (role === "bashExecution") {
     const command = typeof message.command === "string" ? message.command : ""
     const output = typeof message.output === "string" ? message.output : ""
+    const text = [command ? `$ ${command}` : "", output].filter(Boolean).join("\n")
     items.push({
       id: entry.id,
       role: "tool",
       name: "bash",
-      text: [command ? `$ ${command}` : "", output].filter(Boolean).join("\n"),
-      input: command,
-      output,
-      errorText: message.exitCode === 0 ? undefined : output,
+      text: options.includeToolPayloads ? text : previewText(text),
+      input: options.includeToolPayloads ? command : undefined,
+      output: options.includeToolPayloads ? output : undefined,
+      errorText:
+        options.includeToolPayloads && message.exitCode !== 0 ? output : undefined,
+      payloadOmitted: options.includeToolPayloads ? undefined : true,
       status: message.exitCode === 0 ? "finished" : "failed",
     })
     return
@@ -671,8 +729,50 @@ export function createAgentConversationModule({
   emitChatEvent,
 }: AgentConversationModuleOptions) {
   const sessionPromises = new Map<string, Promise<AgentSessionBundle>>()
+  const historyCache = new Map<string, HistoryCacheEntry>()
   const streamState = new Map<string, AgentStreamState>()
   const interruptGenerations = new Map<string, number>()
+
+  async function getHistoryItems(
+    context: OusiaChatContext,
+    includeToolPayloads: boolean
+  ) {
+    const cwd = expandHomePath(context.projectPath)
+    const conversationDir = getConversationDir(context)
+    const sessionFile = await findRecentPiSessionFile(cwd, conversationDir)
+    if (!sessionFile) {
+      return []
+    }
+
+    const fileStat = await stat(sessionFile)
+    const key = sessionKey(context)
+    const cached = historyCache.get(key)
+    const cacheEntry =
+      cached &&
+      cached.sessionFile === sessionFile &&
+      cached.mtimeMs === fileStat.mtimeMs
+        ? cached
+        : {
+            mtimeMs: fileStat.mtimeMs,
+            sessionFile,
+          }
+    const cacheField = includeToolPayloads ? "fullItems" : "lightweightItems"
+    if (cacheEntry[cacheField]) {
+      historyCache.set(key, cacheEntry)
+      return cacheEntry[cacheField]
+    }
+
+    const sessionManager = SessionManager.open(sessionFile, conversationDir, cwd)
+    const items: OusiaChatHistoryItem[] = []
+    sessionManager.getBranch().forEach((entry) => {
+      if (entry.type === "message") {
+        messageEntryToHistoryItems(entry, items, { includeToolPayloads })
+      }
+    })
+    cacheEntry[cacheField] = items
+    historyCache.set(key, cacheEntry)
+    return items
+  }
 
   async function emitContextUsage(context: OusiaChatContext, key: string) {
     const promise = sessionPromises.get(key)
@@ -809,6 +909,7 @@ export function createAgentConversationModule({
       return
     }
     if (event.type === "agent_end") {
+      finishActiveTools(state, context, emitChatEvent, timestamp)
       emitChatEvent(
         { type: "run_status", status: "finished", timestamp },
         context
@@ -820,6 +921,7 @@ export function createAgentConversationModule({
       state.toolDisplayIdsByContentIndex.clear()
       state.toolDisplayIdsByProviderId.clear()
       state.startedToolIds.clear()
+      state.activeToolIds.clear()
       return
     }
     if (event.type === "message_start") {
@@ -878,6 +980,7 @@ export function createAgentConversationModule({
         context
       )
       state.startedToolIds.add(displayId)
+      state.activeToolIds.add(displayId)
       return
     }
     if (event.type === "tool_execution_update") {
@@ -920,6 +1023,7 @@ export function createAgentConversationModule({
         },
         context
       )
+      state.activeToolIds.delete(displayId)
       return
     }
     if (event.type !== "message_update") {
@@ -981,6 +1085,7 @@ export function createAgentConversationModule({
         const toolName = typeof block.name === "string" ? block.name : "tool"
         if (!state.startedToolIds.has(toolCallId)) {
           state.startedToolIds.add(toolCallId)
+          state.activeToolIds.add(toolCallId)
           emitChatEvent(
             {
               type: "tool_start",
@@ -1199,30 +1304,32 @@ export function createAgentConversationModule({
   }
 
   async function getChatHistory(
-    context: OusiaChatContext
+    payload: OusiaChatHistoryPayload
   ): Promise<OusiaChatHistoryResult> {
-    const cwd = expandHomePath(context.projectPath)
-    const conversationDir = getConversationDir(context)
-    const sessionFile = await findRecentPiSessionFile(cwd, conversationDir)
-    if (!sessionFile) {
-      return { items: [] }
-    }
-
     try {
-      const sessionManager = SessionManager.open(
-        sessionFile,
-        conversationDir,
-        cwd
+      const allItems = await getHistoryItems(
+        payload,
+        payload.includeToolPayloads === true
       )
-      const items: OusiaChatHistoryItem[] = []
-      sessionManager.getBranch().forEach((entry) => {
-        if (entry.type === "message") {
-          messageEntryToHistoryItems(entry, items)
+      const limit =
+        typeof payload.limit === "number" && Number.isFinite(payload.limit)
+          ? Math.max(1, Math.floor(payload.limit))
+          : 0
+      if (limit && allItems.length > limit) {
+        return {
+          isPartial: true,
+          items: allItems.slice(-limit),
+          totalItems: allItems.length,
         }
-      })
-      return { items }
+      }
+      return {
+        isPartial: false,
+        items: allItems,
+        totalItems: allItems.length,
+      }
     } catch (error) {
       return {
+        isPartial: false,
         items: [
           {
             id: randomId("history-error"),
@@ -1233,6 +1340,26 @@ export function createAgentConversationModule({
                 : "会话历史加载失败。",
           },
         ],
+      }
+    }
+  }
+
+  async function getChatToolPayload(
+    payload: OusiaChatToolPayloadPayload
+  ): Promise<OusiaChatToolPayloadResult> {
+    try {
+      const items = await getHistoryItems(payload, true)
+      const item = items.find(
+        (candidate) => candidate.role === "tool" && candidate.id === payload.itemId
+      )
+      if (!item || item.role !== "tool") {
+        return { ok: false, error: "没有找到这条工具调用。" }
+      }
+      return { ok: true, item }
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
       }
     }
   }
@@ -1352,6 +1479,10 @@ export function createAgentConversationModule({
       const queuedMessages = session.clearQueue()
       await session.abort()
       if (hadActiveWork) {
+        const state = streamState.get(key)
+        if (state) {
+          finishActiveTools(state, context, emitChatEvent)
+        }
         emitChatEvent(
           {
             type: "run_status",
@@ -1498,6 +1629,7 @@ export function createAgentConversationModule({
     exportChat,
     getContextUsage,
     getChatHistory,
+    getChatToolPayload,
     interruptChat,
     sendChatMessage,
   }

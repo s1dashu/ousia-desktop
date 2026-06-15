@@ -10,9 +10,12 @@ import type {
   OusiaChatExportResult,
   OusiaChatGenerateTitlePayload,
   OusiaChatGenerateTitleResult,
+  OusiaChatHistoryPayload,
   OusiaChatHistoryResult,
   OusiaChatInterruptPayload,
   OusiaChatInterruptResult,
+  OusiaChatToolPayloadPayload,
+  OusiaChatToolPayloadResult,
   OusiaChatSendPayload,
   OusiaChatSendResult,
   OusiaModelRegistryResult,
@@ -79,8 +82,15 @@ const api = {
   ): Promise<OusiaChatGenerateTitleResult> {
     return ipcRenderer.invoke("ousia:chat:generate-title", payload)
   },
-  getChatHistory(payload: OusiaChatContext): Promise<OusiaChatHistoryResult> {
+  getChatHistory(
+    payload: OusiaChatHistoryPayload
+  ): Promise<OusiaChatHistoryResult> {
     return ipcRenderer.invoke("ousia:chat:history", payload)
+  },
+  getChatToolPayload(
+    payload: OusiaChatToolPayloadPayload
+  ): Promise<OusiaChatToolPayloadResult> {
+    return ipcRenderer.invoke("ousia:chat:tool-payload", payload)
   },
   branchChat(payload: OusiaChatBranchPayload): Promise<OusiaChatBranchResult> {
     return ipcRenderer.invoke("ousia:chat:branch", payload)

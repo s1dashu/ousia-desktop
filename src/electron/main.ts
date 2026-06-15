@@ -17,8 +17,10 @@ import type {
   OusiaChatEvent,
   OusiaChatExportPayload,
   OusiaChatGenerateTitlePayload,
+  OusiaChatHistoryPayload,
   OusiaChatInterruptPayload,
   OusiaChatSendPayload,
+  OusiaChatToolPayloadPayload,
   OusiaSelectDirectoryResult,
   OusiaTerminalCreatePayload,
   OusiaTerminalDisposePayload,
@@ -84,8 +86,14 @@ ipcMain.handle(
     generateChatTitleWithUtilityModel(payload, app.getPath("userData"))
 )
 
-ipcMain.handle("ousia:chat:history", (_event, payload: OusiaChatContext) =>
+ipcMain.handle("ousia:chat:history", (_event, payload: OusiaChatHistoryPayload) =>
   agentConversations.getChatHistory(payload)
+)
+
+ipcMain.handle(
+  "ousia:chat:tool-payload",
+  (_event, payload: OusiaChatToolPayloadPayload) =>
+    agentConversations.getChatToolPayload(payload)
 )
 
 ipcMain.handle("ousia:chat:branch", (_event, payload: OusiaChatBranchPayload) =>
