@@ -56,6 +56,6 @@ desktop agent client:
 
 ## Notes
 
-- Default unassigned sessions run in the configured default work dir, currently
-  `~/.ousia/workspace`.
+- Default unassigned sessions run in the configured default chat directory,
+  currently `~/.ousia/chat`.
 - Runtime logs live at `~/.ousia/logs/ousia-desktop.log`.

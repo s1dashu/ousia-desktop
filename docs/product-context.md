@@ -17,7 +17,7 @@ In scope:
 - Project/session isolated cwd for agent work.
 - A right-side terminal panel using xterm.js and node-pty.
 - User settings for appearance mode, Radix color scale, model provider API
-  keys, model, thinking level, and default work dir.
+  keys, model, thinking level, and default chat directory.
 
 Out of scope:
 
@@ -40,5 +40,5 @@ system.
 - Sidebar: left project/session/settings navigation.
 - Chat: central conversation surface for the pi coding agent.
 - Terminal panel: right-side built-in terminal for the selected project/session.
-- Default work dir: directory used by unassigned sessions, currently
-  `~/.ousia/workspace`.
+- Default chat directory: directory used by unassigned sessions, currently
+  `~/.ousia/chat`.

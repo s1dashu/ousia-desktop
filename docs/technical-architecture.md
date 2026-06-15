@@ -93,7 +93,7 @@ or prepends an `ousia` CLI shim to the agent environment.
 
 App state schema version 2 stores settings, flat project/session indexes,
 expanded project ids, shell layout, selected session, and window state. Settings
-include appearance mode, Radix color scale, default work dir, send-during-run
+include appearance mode, Radix color scale, default chat directory, send-during-run
 mode, thinking level, selected model, and per-provider API keys.
 
 `src/electron/app-state-store.ts` accepts the current schema only. Invalid or

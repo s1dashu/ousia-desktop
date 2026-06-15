@@ -49,6 +49,12 @@ match the task.
 - Keep the right panel terminal-first and direct; it is not a tabbed workspace.
 - Preserve the shadcn preset theme direction unless the user explicitly changes
   it.
+- Keep primary floating panels, menus, popovers, dialogs, and dropdown surfaces
+  pure white. Paper is an auxiliary/background color, not the main panel color.
+- Match those floating surfaces to the composer default surface treatment:
+  `0.5px` foreground/10 border and the shared
+  `--ousia-floating-panel-shadow`, which is slightly stronger than the composer
+  shadow; avoid thicker borders, diffuse shadows, or ad hoc panel shadows.
 - Follow the project icon policy in `docs/design-context.md`: use Lucide for
   ordinary utility icons and Solar icons only for high-expression navigation or
   major workspace signals.
