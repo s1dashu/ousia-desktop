@@ -307,12 +307,14 @@ export function createProjectTerminalModule({
     const cwd = resolveProjectRoot(payload.projectPath)
     const key = terminalKey(payload)
     const previousSession = terminalSessions.get(key)
-    terminalSessions.delete(key)
-    previousSession?.process.kill()
-    previousSession?.cleanup()
 
     const cols = clampTerminalSize(payload.cols, 80, 500)
     const rows = clampTerminalSize(payload.rows, 24, 200)
+    if (previousSession) {
+      previousSession.process.resize(cols, rows)
+      return { terminalId: payload.terminalId }
+    }
+
     const shellPath = defaultShell()
     const shellLaunch = createShellLaunch(shellPath, cwd)
     const terminalProcess = pty.spawn(shellPath, shellLaunch.args, {
@@ -385,6 +387,9 @@ export function createProjectTerminalModule({
   async function disposeTerminal(
     payload: OusiaTerminalDisposePayload
   ): Promise<OusiaTerminalOperationResult> {
+    if (payload.keepAlive) {
+      return { ok: true }
+    }
     const key = terminalKey(payload)
     const terminal = terminalSessions.get(key)
     if (terminal) {

@@ -28,14 +28,17 @@ type TerminalPanelProps = {
 }
 
 function createTerminalId(projectPath: string, sessionId: string) {
+  const rawScope = `${projectPath}-${sessionId}`
+  let hash = 0
+  for (let index = 0; index < rawScope.length; index += 1) {
+    hash = (hash * 31 + rawScope.charCodeAt(index)) | 0
+  }
   const scope =
-    `${projectPath}-${sessionId}`
+    rawScope
       .replace(/[^a-zA-Z0-9._-]+/g, "-")
       .replace(/^-+|-+$/g, "")
       .slice(-48) || "default"
-  return `terminal-${scope}-${Date.now()}-${Math.random()
-    .toString(36)
-    .slice(2, 8)}`
+  return `terminal-${scope}-${Math.abs(hash).toString(36)}`
 }
 
 function createTerminalTheme(theme: ResolvedTheme): ITheme {
@@ -119,6 +122,7 @@ export function TerminalPanel({
   const terminalRef = useRef<XtermTerminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const resolvedThemeRef = useRef<ResolvedTheme>(resolvedTheme)
+  const terminalMessagesRef = useRef(t.terminal)
   const terminalId = useMemo(
     () => createTerminalId(projectPath, sessionId),
     [projectPath, sessionId]
@@ -130,6 +134,10 @@ export function TerminalPanel({
       applyOusiaTerminalStyle(terminalRef.current, resolvedTheme)
     }
   }, [resolvedTheme])
+
+  useEffect(() => {
+    terminalMessagesRef.current = t.terminal
+  }, [t.terminal])
 
   useEffect(() => {
     if (!isVisible) {
@@ -225,9 +233,12 @@ export function TerminalPanel({
           activeTerminal.write(event.data)
           scheduleStyleReapply()
         } else if (event.type === "exit") {
+          const terminalMessages = terminalMessagesRef.current
           activeTerminal.writeln("")
           activeTerminal.writeln(
-            t.terminal.exited(event.exitCode ?? event.signal ?? t.terminal.unknown)
+            terminalMessages.exited(
+              event.exitCode ?? event.signal ?? terminalMessages.unknown
+            )
           )
         } else {
           activeTerminal.writeln(`\r\n${event.message}`)
@@ -253,7 +264,10 @@ export function TerminalPanel({
         })
         .then(scheduleStyleReapply)
         .catch((error: unknown) => {
-          const message = error instanceof Error ? error.message : t.terminal.startFailed
+          const message =
+            error instanceof Error
+              ? error.message
+              : terminalMessagesRef.current.startFailed
           activeTerminal.writeln(message)
         })
     }
@@ -275,9 +289,10 @@ export function TerminalPanel({
         projectPath,
         sessionId,
         terminalId,
+        keepAlive: true,
       })
     }
-  }, [projectPath, sessionId, t.terminal, terminalId])
+  }, [projectPath, sessionId, terminalId])
 
   const shellThemeClass =
     resolvedTheme === "light"
