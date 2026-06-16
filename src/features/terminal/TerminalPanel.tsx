@@ -16,6 +16,9 @@ const TERMINAL_FONT_SIZE = 14
 const TERMINAL_FONT_WEIGHT = "400"
 const TERMINAL_LINE_HEIGHT = 16 / 14
 const TERMINAL_STYLE_REAPPLY_DELAY_MS = 80
+const MIN_TERMINAL_START_COLS = 24
+const MIN_TERMINAL_START_ROWS = 4
+const TERMINAL_FIT_RETRY_LIMIT = 12
 
 type TerminalPanelProps = {
   projectPath: string
@@ -93,6 +96,12 @@ function createTerminalTheme(theme: ResolvedTheme): ITheme {
 
 async function loadTerminalFont() {
   await document.fonts.load(`${TERMINAL_FONT_SIZE}px "Ousia Terminal Mono"`)
+}
+
+function waitForAnimationFrame() {
+  return new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve())
+  })
 }
 
 function applyOusiaTerminalStyle(terminal: XtermTerminal, theme: ResolvedTheme) {
@@ -202,6 +211,21 @@ export function TerminalPanel({
       activeTerminal.loadAddon(new WebLinksAddon())
       activeTerminal.open(container)
       applyOusiaTerminalStyle(activeTerminal, resolvedThemeRef.current)
+      let fitDimensions = fitAddon.proposeDimensions()
+      for (
+        let attempt = 0;
+        attempt < TERMINAL_FIT_RETRY_LIMIT &&
+        (!fitDimensions ||
+          fitDimensions.cols < MIN_TERMINAL_START_COLS ||
+          fitDimensions.rows < MIN_TERMINAL_START_ROWS);
+        attempt += 1
+      ) {
+        await waitForAnimationFrame()
+        if (isDisposed) {
+          return
+        }
+        fitDimensions = fitAddon.proposeDimensions()
+      }
       fitAddon.fit()
       activeTerminal.focus()
       terminal = activeTerminal
@@ -259,8 +283,8 @@ export function TerminalPanel({
           projectPath,
           sessionId,
           terminalId,
-          cols: activeTerminal.cols,
-          rows: activeTerminal.rows,
+          cols: Math.max(activeTerminal.cols, MIN_TERMINAL_START_COLS),
+          rows: Math.max(activeTerminal.rows, MIN_TERMINAL_START_ROWS),
         })
         .then(scheduleStyleReapply)
         .catch((error: unknown) => {

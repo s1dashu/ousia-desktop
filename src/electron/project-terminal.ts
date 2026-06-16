@@ -45,6 +45,8 @@ type TerminalSession = {
 type TerminalCleanupMode = "defer" | "now"
 
 const deferredTerminalTempDirs = new Set<string>()
+const MIN_TERMINAL_COLS = 24
+const MIN_TERMINAL_ROWS = 4
 
 function removeTerminalTempDir(tempDir: string) {
   try {
@@ -70,11 +72,16 @@ function terminalKey(context: OusiaTerminalDisposePayload) {
   return `${context.projectPath}::${context.sessionId}::${context.terminalId}`
 }
 
-function clampTerminalSize(value: number, fallback: number, max: number) {
+function clampTerminalSize(
+  value: number,
+  fallback: number,
+  min: number,
+  max: number
+) {
   if (!Number.isFinite(value)) {
     return fallback
   }
-  return Math.min(Math.max(Math.floor(value), 2), max)
+  return Math.min(Math.max(Math.floor(value), min), max)
 }
 
 function defaultShell() {
@@ -308,8 +315,8 @@ export function createProjectTerminalModule({
     const key = terminalKey(payload)
     const previousSession = terminalSessions.get(key)
 
-    const cols = clampTerminalSize(payload.cols, 80, 500)
-    const rows = clampTerminalSize(payload.rows, 24, 200)
+    const cols = clampTerminalSize(payload.cols, 80, MIN_TERMINAL_COLS, 500)
+    const rows = clampTerminalSize(payload.rows, 24, MIN_TERMINAL_ROWS, 200)
     if (previousSession) {
       previousSession.process.resize(cols, rows)
       return { terminalId: payload.terminalId }
@@ -377,8 +384,18 @@ export function createProjectTerminalModule({
     const terminal = terminalSessions.get(terminalKey(payload))
     if (terminal) {
       terminal.process.resize(
-        clampTerminalSize(payload.cols, terminal.process.cols, 500),
-        clampTerminalSize(payload.rows, terminal.process.rows, 200)
+        clampTerminalSize(
+          payload.cols,
+          terminal.process.cols,
+          MIN_TERMINAL_COLS,
+          500
+        ),
+        clampTerminalSize(
+          payload.rows,
+          terminal.process.rows,
+          MIN_TERMINAL_ROWS,
+          200
+        )
       )
     }
     return { ok: true }

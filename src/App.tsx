@@ -47,7 +47,7 @@ const SIDEBAR_COLLAPSE_THRESHOLD = 120
 const MAX_SIDEBAR_WIDTH = 360
 const MIN_CHAT_WIDTH = 300
 const MIN_TERMINAL_PANEL_WIDTH = 400
-const MIN_TERMINAL_PANEL_COMPACT_WIDTH = 100
+const MIN_TERMINAL_PANEL_COMPACT_WIDTH = 260
 const RESIZE_HANDLE_WIDTH = 1
 const CHAT_HISTORY_PREVIEW_LIMIT = 50
 const CHAT_HISTORY_PREFETCH_COUNT = 5
@@ -323,6 +323,16 @@ export function App() {
     },
     [projects, settings.defaultWorkDir]
   )
+  const sidebarRunStatusBySessionId = useMemo(() => {
+    const next: Record<string, AgentRunStatus> = {}
+    for (const session of sessions) {
+      const targetKey = chatKey(projectPathForSession(session), session.id)
+      if (runStatusBySession[targetKey] === "working") {
+        next[session.id] = "working"
+      }
+    }
+    return next
+  }, [projectPathForSession, runStatusBySession, sessions])
   const createAppStateSnapshot = useCallback(
     (nextSettings: AppSettings = settings): InitialAppState => ({
       schemaVersion: APP_STATE_SCHEMA_VERSION,
@@ -997,6 +1007,13 @@ export function App() {
       }
       return next
     })
+    setRunStatusBySession((current) => {
+      const next = { ...current }
+      for (const session of removedSessions) {
+        delete next[chatKey(project.path, session.id)]
+      }
+      return next
+    })
 
     if (selectedSession?.projectId === projectId) {
       const nextSession = remainingSessions[0]
@@ -1176,6 +1193,11 @@ export function App() {
       return next
     })
     setHistoryLoadStateBySession((current) => {
+      const next = { ...current }
+      delete next[chatKey(projectPathForSession(session), sessionId)]
+      return next
+    })
+    setRunStatusBySession((current) => {
       const next = { ...current }
       delete next[chatKey(projectPathForSession(session), sessionId)]
       return next
@@ -1476,7 +1498,7 @@ export function App() {
             selectedSessionId={selectedSession?.id ?? ""}
             sidebarSectionOrder={sidebarSectionOrder}
             scrollTargetSessionId={sidebarScrollTargetSessionId}
-            sessionRunStatusById={runStatusBySession}
+            sessionRunStatusById={sidebarRunStatusBySessionId}
             sessions={sessions}
             language={settings.language}
             style={{ width: "var(--ousia-sidebar-live-width)" }}

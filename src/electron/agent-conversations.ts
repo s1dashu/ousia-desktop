@@ -504,6 +504,9 @@ function messageEntryToHistoryItems(
   }
   if (role === "assistant") {
     const content = Array.isArray(message.content) ? message.content : []
+    const stopReason =
+      typeof message.stopReason === "string" ? message.stopReason : undefined
+    const orphanedToolStatus = stopReason === "aborted" ? "finished" : "running"
     content.forEach((part, index) => {
       if (!part || typeof part !== "object") {
         return
@@ -543,7 +546,7 @@ function messageEntryToHistoryItems(
           text: options.includeToolPayloads ? input : previewText(input || "{}"),
           input: options.includeToolPayloads ? input : undefined,
           payloadOmitted: options.includeToolPayloads ? undefined : true,
-          status: "running",
+          status: orphanedToolStatus,
         })
       }
     })
@@ -941,6 +944,9 @@ export function createAgentConversationModule({
     }
     if (event.type === "message_end") {
       const message = event.message as unknown as Record<string, unknown>
+      if (message.role === "assistant" && message.stopReason === "aborted") {
+        finishActiveTools(state, context, emitChatEvent, timestamp)
+      }
       if (message.role === "assistant" && message.stopReason === "error") {
         emitChatEvent(
           {
