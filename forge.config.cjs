@@ -1,4 +1,3 @@
-const { cpSync, existsSync, readdirSync, rmSync } = require("node:fs")
 const { join } = require("node:path")
 
 const { MakerDeb } = require("@electron-forge/maker-deb")
@@ -28,19 +27,12 @@ module.exports = {
       appleIdPassword: process.env.APPLE_APP_SPECIFIC_PASSWORD,
       teamId: process.env.APPLE_TEAM_ID,
     },
-    asar: {
-      unpack: "**/node_modules/node-pty/**/*",
-    },
     ignore: (file) => {
       if (!file) {
         return false
       }
 
-      const includedSubtrees = [
-        "/.vite",
-        "/node_modules/node-pty",
-        "/node_modules/node-addon-api",
-      ]
+      const includedSubtrees = ["/.vite"]
 
       if (file === "/package.json" || file === "/node_modules") {
         return false
@@ -50,39 +42,6 @@ module.exports = {
         (includedPath) =>
           file === includedPath || file.startsWith(`${includedPath}/`)
       )
-    },
-  },
-  hooks: {
-    postPackage: async (_config, { outputPaths, platform }) => {
-      if (platform !== "darwin") {
-        return
-      }
-
-      for (const outputPath of outputPaths) {
-        const appBundleName = readdirSync(outputPath).find((entry) =>
-          entry.endsWith(".app")
-        )
-
-        if (!appBundleName) {
-          continue
-        }
-
-        const resourcesPath = join(
-          outputPath,
-          appBundleName,
-          "Contents",
-          "Resources"
-        )
-        if (!existsSync(resourcesPath)) {
-          continue
-        }
-
-        const terminalResourcePath = join(resourcesPath, "terminal")
-        rmSync(terminalResourcePath, { force: true, recursive: true })
-        cpSync("src/features/terminal/resources", terminalResourcePath, {
-          recursive: true,
-        })
-      }
     },
   },
   rebuildConfig: {},

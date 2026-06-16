@@ -21,16 +21,14 @@ desktop agent client:
 
 - Sidebar for sessions/projects/settings.
 - Chat as the primary agent surface.
-- Right-side terminal panel only.
-- No workspace tab strip, extension picker, runtime extension watcher, browser
-  host, editor/PDF host, or extension state store.
+- No right-side workspace panel, workspace tab strip, extension picker, runtime
+  extension watcher, browser host, editor/PDF host, or extension state store.
 - No `ousia extension ...` CLI bridge.
 - No Ousia extension usage skill injection into pi sessions.
 
 ## Implemented UI State
 
 - Sidebar collapse/expand and resizing.
-- Right terminal panel collapse/expand and resizing.
 - Chat history rendering with Streamdown.
 - File and image attachments in chat input.
 - Appearance mode and Radix color-scale settings.
@@ -38,14 +36,6 @@ desktop agent client:
 - Model and thinking-level controls in the chat input.
 - Settings UI isolated in `src/features/settings/SettingsPage.tsx`.
 - Sortable top-level sidebar sections: `会话` and `项目`.
-- Right header terminal icon opens the terminal panel directly.
-
-## Terminal
-
-- Renderer terminal UI: `src/features/terminal/TerminalPanel.tsx`.
-- Main PTY host: `src/electron/project-terminal.ts`.
-- Resources: `src/features/terminal/resources`.
-- Packaged resource target: `terminal` in Electron resources.
 
 ## Persistence
 

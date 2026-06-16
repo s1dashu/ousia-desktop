@@ -21,13 +21,6 @@ import type {
   OusiaModelRegistryResult,
   OusiaOpenProjectResult,
   OusiaSelectDirectoryResult,
-  OusiaTerminalCreatePayload,
-  OusiaTerminalCreateResult,
-  OusiaTerminalDisposePayload,
-  OusiaTerminalEvent,
-  OusiaTerminalOperationResult,
-  OusiaTerminalResizePayload,
-  OusiaTerminalWritePayload,
   OusiaWindowFullscreenEvent,
   OusiaWindowFullscreenResult,
   OusiaWindowZoomEvent,
@@ -122,34 +115,6 @@ const api = {
   },
   getWindowZoomState(): Promise<OusiaWindowZoomResult> {
     return ipcRenderer.invoke("ousia:window:zoom-state")
-  },
-  createTerminal(
-    payload: OusiaTerminalCreatePayload
-  ): Promise<OusiaTerminalCreateResult> {
-    return ipcRenderer.invoke("ousia:host:project-pty:create", payload)
-  },
-  writeTerminal(
-    payload: OusiaTerminalWritePayload
-  ): Promise<OusiaTerminalOperationResult> {
-    return ipcRenderer.invoke("ousia:host:project-pty:write", payload)
-  },
-  resizeTerminal(
-    payload: OusiaTerminalResizePayload
-  ): Promise<OusiaTerminalOperationResult> {
-    return ipcRenderer.invoke("ousia:host:project-pty:resize", payload)
-  },
-  disposeTerminal(
-    payload: OusiaTerminalDisposePayload
-  ): Promise<OusiaTerminalOperationResult> {
-    return ipcRenderer.invoke("ousia:host:project-pty:dispose", payload)
-  },
-  onTerminalEvent(callback: (event: OusiaTerminalEvent) => void): () => void {
-    const listener = (_event: IpcRendererEvent, payload: OusiaTerminalEvent) =>
-      callback(payload)
-    ipcRenderer.on("ousia:terminal:event", listener)
-    return () => {
-      ipcRenderer.off("ousia:terminal:event", listener)
-    }
   },
   onChatEvent(callback: (event: OusiaChatEvent) => void): () => void {
     const listener = (_event: IpcRendererEvent, payload: OusiaChatEvent) =>

@@ -7,24 +7,6 @@
 @custom-variant dark (&:is(.dark *));
 
 @font-face {
-  font-family: "Ousia Terminal Mono";
-  font-style: normal;
-  font-weight: 400;
-  font-display: block;
-  src: url("./assets/fonts/terminal/OusiaTerminalMono-Regular.ttf")
-    format("truetype");
-}
-
-@font-face {
-  font-family: "Ousia Terminal Mono";
-  font-style: normal;
-  font-weight: 700;
-  font-display: block;
-  src: url("./assets/fonts/terminal/OusiaTerminalMono-Bold.ttf")
-    format("truetype");
-}
-
-@font-face {
   font-family: "Ousia Source Han Sans SC";
   font-style: normal;
   font-weight: 400;
@@ -1208,7 +1190,6 @@
 }
 
 .ousia-hover-scrollbar,
-.ousia-terminal-viewport .xterm-viewport,
 .ousia-chat-markdown [data-streamdown="code-block-body"],
 .ousia-chat-markdown [data-streamdown="table-wrapper"] > div:last-child {
   scrollbar-color: transparent transparent;
@@ -1222,7 +1203,6 @@
 .ousia-hover-scrollbar:hover,
 .ousia-hover-scrollbar:focus,
 .ousia-hover-scrollbar:focus-within,
-.ousia-terminal-viewport:hover .xterm-viewport,
 .ousia-chat-markdown [data-streamdown="code-block-body"]:hover,
 .ousia-chat-markdown [data-streamdown="code-block-body"]:focus,
 .ousia-chat-markdown [data-streamdown="code-block-body"]:focus-within,
@@ -1234,7 +1214,6 @@
 }
 
 .ousia-hover-scrollbar::-webkit-scrollbar,
-.ousia-terminal-viewport .xterm-viewport::-webkit-scrollbar,
 .ousia-chat-markdown
   [data-streamdown="code-block-body"]::-webkit-scrollbar,
 .ousia-chat-markdown
@@ -1245,7 +1224,6 @@
 }
 
 .ousia-hover-scrollbar::-webkit-scrollbar-track,
-.ousia-terminal-viewport .xterm-viewport::-webkit-scrollbar-track,
 .ousia-chat-markdown
   [data-streamdown="code-block-body"]::-webkit-scrollbar-track,
 .ousia-chat-markdown
@@ -1255,7 +1233,6 @@
 }
 
 .ousia-hover-scrollbar::-webkit-scrollbar-thumb,
-.ousia-terminal-viewport .xterm-viewport::-webkit-scrollbar-thumb,
 .ousia-chat-markdown
   [data-streamdown="code-block-body"]::-webkit-scrollbar-thumb,
 .ousia-chat-markdown
@@ -1268,11 +1245,6 @@
 .ousia-hover-scrollbar:hover::-webkit-scrollbar-thumb,
 .ousia-hover-scrollbar:focus::-webkit-scrollbar-thumb,
 .ousia-hover-scrollbar:focus-within::-webkit-scrollbar-thumb,
-.ousia-terminal-viewport:hover .xterm-viewport::-webkit-scrollbar-thumb,
-.ousia-terminal-viewport:hover
-  .xterm-scrollable-element
-  > .scrollbar
-  > div,
 .ousia-chat-markdown
   [data-streamdown="code-block-body"]:hover::-webkit-scrollbar-thumb,
 .ousia-chat-markdown
@@ -1295,39 +1267,9 @@
   );
 }
 
-.ousia-terminal-viewport .xterm-scrollable-element > .scrollbar {
-  opacity: 0;
-  transition: opacity 140ms ease;
-  width: 6px !important;
-}
-
-.ousia-terminal-viewport .xterm-scrollable-element > .scrollbar > div {
-  background-color: transparent !important;
-  border-radius: 999px;
-  left: 0 !important;
-  width: 6px !important;
-}
-
-.ousia-terminal-viewport:hover .xterm-scrollable-element > .scrollbar {
-  opacity: 1;
-}
-
-.ousia-terminal-viewport:hover .xterm-scrollable-element > .scrollbar > div {
-  background-color: color-mix(
-    in oklch,
-    var(--muted-foreground) 24%,
-    transparent
-  ) !important;
-}
-
 .ousia-hover-scrollbar:hover::-webkit-scrollbar-thumb:hover,
 .ousia-hover-scrollbar:focus::-webkit-scrollbar-thumb:hover,
 .ousia-hover-scrollbar:focus-within::-webkit-scrollbar-thumb:hover,
-.ousia-terminal-viewport:hover .xterm-viewport::-webkit-scrollbar-thumb:hover,
-.ousia-terminal-viewport:hover
-  .xterm-scrollable-element
-  > .scrollbar
-  > div:hover,
 .ousia-chat-markdown
   [data-streamdown="code-block-body"]:hover::-webkit-scrollbar-thumb:hover,
 .ousia-chat-markdown

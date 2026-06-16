@@ -22,13 +22,8 @@ import type {
   OusiaChatSendPayload,
   OusiaChatToolPayloadPayload,
   OusiaSelectDirectoryResult,
-  OusiaTerminalCreatePayload,
-  OusiaTerminalDisposePayload,
-  OusiaTerminalResizePayload,
-  OusiaTerminalWritePayload,
 } from "./chat-types.js"
 import { listPiModels } from "./model-registry.js"
-import { createProjectTerminalModule } from "./project-terminal.js"
 import {
   installRuntimeLogger,
   OUSIA_DESKTOP_LOG_PATH,
@@ -54,23 +49,13 @@ function emitChatEvent(event: OusiaChatEvent, context?: OusiaChatContext) {
   )
 }
 
-function emitTerminalEvent(event: unknown) {
-  if (!mainWindow || mainWindow.isDestroyed()) {
-    return
-  }
-  mainWindow?.webContents.send("ousia:terminal:event", event)
-}
-
 const agentConversations = createAgentConversationModule({
   enabledTools,
   emitChatEvent,
 })
 
-const projectTerminal = createProjectTerminalModule({ emitTerminalEvent })
 const windowHost = createWindowHost({
-  onClosed() {
-    projectTerminal.disposeAllTerminals()
-  },
+  onClosed() {},
   onWindowChanged(window) {
     mainWindow = window
   },
@@ -193,30 +178,6 @@ ipcMain.handle("ousia:app-state:save", (_event, payload: OusiaAppState) =>
   saveAppState(payload)
 )
 
-ipcMain.handle(
-  "ousia:host:project-pty:create",
-  (_event, payload: OusiaTerminalCreatePayload) =>
-    projectTerminal.createTerminal(payload)
-)
-
-ipcMain.handle(
-  "ousia:host:project-pty:write",
-  (_event, payload: OusiaTerminalWritePayload) =>
-    projectTerminal.writeTerminal(payload)
-)
-
-ipcMain.handle(
-  "ousia:host:project-pty:resize",
-  (_event, payload: OusiaTerminalResizePayload) =>
-    projectTerminal.resizeTerminal(payload)
-)
-
-ipcMain.handle(
-  "ousia:host:project-pty:dispose",
-  (_event, payload: OusiaTerminalDisposePayload) =>
-    projectTerminal.disposeTerminal(payload)
-)
-
 ipcMain.on("ousia:log:renderer-error", (_event, payload: unknown) => {
   writeRuntimeLog("renderer.error", "error", payload)
 })
@@ -228,7 +189,6 @@ app.whenReady().then(async () => {
 
 app.on("window-all-closed", () => {
   writeRuntimeLog("main", "info", "All windows closed")
-  projectTerminal.disposeAllTerminals()
   if (process.platform !== "darwin") {
     app.quit()
   }

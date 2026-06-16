@@ -67,20 +67,10 @@ function normalizeShellLayout(value: unknown): OusiaShellLayoutState {
 
   return {
     sidebarWidth: clampNumber(value.sidebarWidth, fallback.sidebarWidth, 200, 320),
-    terminalPanelWidth: clampNumber(
-      value.terminalPanelWidth,
-      fallback.terminalPanelWidth,
-      448,
-      1600
-    ),
     isSidebarCollapsed:
       typeof value.isSidebarCollapsed === "boolean"
         ? value.isSidebarCollapsed
         : fallback.isSidebarCollapsed,
-    isTerminalPanelCollapsed:
-      typeof value.isTerminalPanelCollapsed === "boolean"
-        ? value.isTerminalPanelCollapsed
-        : fallback.isTerminalPanelCollapsed,
     sidebarSectionOrder,
   }
 }

@@ -114,9 +114,7 @@ export type OusiaSidebarSectionId = "sessions" | "projects"
 
 export type OusiaShellLayoutState = {
   sidebarWidth: number
-  terminalPanelWidth: number
   isSidebarCollapsed: boolean
-  isTerminalPanelCollapsed: boolean
   sidebarSectionOrder: OusiaSidebarSectionId[]
 }
 
@@ -360,9 +358,7 @@ export function ousiaProjectNameFromPath(path: string) {
 export function createDefaultOusiaShellLayout(): OusiaShellLayoutState {
   return {
     sidebarWidth: 256,
-    terminalPanelWidth: 448,
     isSidebarCollapsed: false,
-    isTerminalPanelCollapsed: false,
     sidebarSectionOrder: ["sessions", "projects"],
   }
 }
@@ -682,54 +678,6 @@ export type OusiaSelectDirectoryResult =
   | {
       canceled: false
       path: string
-    }
-
-export type OusiaTerminalContext = OusiaChatContext & {
-  terminalId: string
-}
-
-export type OusiaTerminalCreatePayload = OusiaTerminalContext & {
-  cols: number
-  rows: number
-}
-
-export type OusiaTerminalCreateResult = {
-  terminalId: string
-}
-
-export type OusiaTerminalWritePayload = OusiaTerminalContext & {
-  data: string
-}
-
-export type OusiaTerminalResizePayload = OusiaTerminalContext & {
-  cols: number
-  rows: number
-}
-
-export type OusiaTerminalDisposePayload = OusiaTerminalContext & {
-  keepAlive?: boolean
-}
-
-export type OusiaTerminalOperationResult = {
-  ok: boolean
-}
-
-export type OusiaTerminalEvent =
-  | {
-      type: "data"
-      terminalId: string
-      data: string
-    }
-  | {
-      type: "exit"
-      terminalId: string
-      exitCode?: number
-      signal?: number
-    }
-  | {
-      type: "error"
-      terminalId: string
-      message: string
     }
 
 export type OusiaWindowFullscreenEvent = {

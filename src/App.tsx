@@ -38,7 +38,6 @@ import { applyChatEvent, type ChatItem } from "@/features/chat/chat-events"
 import { SettingsPage } from "@/features/settings/SettingsPage"
 import { TitleBarSidebarToggle } from "@/features/shell/TitleBarTrafficLightSlot"
 import { Sidebar } from "@/features/sidebar/Sidebar"
-import { TerminalPanel } from "@/features/terminal/TerminalPanel"
 
 const SESSION_TITLE_MODEL_ID = "deepseek-v4-flash"
 
@@ -46,8 +45,6 @@ const MIN_SIDEBAR_WIDTH = 200
 const SIDEBAR_COLLAPSE_THRESHOLD = 120
 const MAX_SIDEBAR_WIDTH = 320
 const MIN_CHAT_WIDTH = 300
-const MIN_TERMINAL_PANEL_WIDTH = 400
-const MIN_TERMINAL_PANEL_COMPACT_WIDTH = 260
 const RESIZE_HANDLE_WIDTH = 1
 const CHAT_HISTORY_PREVIEW_LIMIT = 50
 const CHAT_HISTORY_PREFETCH_COUNT = 5
@@ -76,23 +73,30 @@ function chatKey(projectPath: string, sessionId: string) {
 }
 
 function scheduleIdleWork(callback: () => void) {
-  if ("requestIdleCallback" in window) {
-    const id = window.requestIdleCallback(callback, { timeout: 1200 })
+  const requestIdleCallback = window.requestIdleCallback
+  if (typeof requestIdleCallback === "function") {
+    const id = requestIdleCallback.call(window, callback, { timeout: 1200 })
     return () => window.cancelIdleCallback(id)
   }
-  const id = window.setTimeout(callback, 120)
-  return () => window.clearTimeout(id)
+  const id = globalThis.setTimeout(callback, 120)
+  return () => globalThis.clearTimeout(id)
+}
+
+function isTextDeltaEvent(
+  event: OusiaChatEvent | undefined
+): event is TextDeltaChatEvent {
+  return (
+    event?.type === "assistant_text_delta" || event?.type === "thinking_delta"
+  )
 }
 
 function canMergeTextDeltaEvents(
   previousEvent: OusiaChatEvent | undefined,
-  nextEvent: OusiaChatEvent
+  nextEvent: TextDeltaChatEvent
 ): previousEvent is TextDeltaChatEvent {
   return (
-    Boolean(previousEvent) &&
-    (nextEvent.type === "assistant_text_delta" ||
-      nextEvent.type === "thinking_delta") &&
-    previousEvent?.type === nextEvent.type &&
+    isTextDeltaEvent(previousEvent) &&
+    previousEvent.type === nextEvent.type &&
     previousEvent.id === nextEvent.id
   )
 }
@@ -201,17 +205,13 @@ function ResizeHandle({
 }
 
 export function App() {
-  const { theme, resolvedTheme, setTheme } = useTheme()
+  const { theme, setTheme } = useTheme()
   const [initialState] = useState<InitialAppState>(() => createDefaultAppState())
   const [isAppStateLoaded, setIsAppStateLoaded] = useState(!window.ousia)
   const shellRef = useRef<HTMLElement>(null)
   const sidebarShellRef = useRef<HTMLDivElement>(null)
-  const terminalPanelShellRef = useRef<HTMLDivElement>(null)
   const [sidebarWidth, setSidebarWidth] = useState(
     initialState.shellLayout.sidebarWidth
-  )
-  const [terminalPanelWidth, setTerminalPanelWidth] = useState(
-    initialState.shellLayout.terminalPanelWidth
   )
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
     initialState.shellLayout.isSidebarCollapsed
@@ -220,20 +220,12 @@ export function App() {
     OusiaSidebarSectionId[]
   >(normalizeSidebarSectionOrder(initialState.shellLayout.sidebarSectionOrder))
   const [isShellResizing, setIsShellResizing] = useState(false)
-  const [shellWidth, setShellWidth] = useState(0)
-  const shellWidthRef = useRef(0)
   const [isWindowFullscreen, setIsWindowFullscreen] = useState(false)
   const [zoomIndicatorPercent, setZoomIndicatorPercent] = useState<number | null>(
     null
   )
   const zoomIndicatorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
-  )
-  const [isTerminalPanelCollapsed, setIsTerminalPanelCollapsed] = useState(
-    initialState.shellLayout.isTerminalPanelCollapsed
-  )
-  const [hasTerminalPanelMounted, setHasTerminalPanelMounted] = useState(
-    !initialState.shellLayout.isTerminalPanelCollapsed
   )
   const [settings, setSettings] = useState<AppSettings>(initialState.settings)
   const t = getMessages(settings.language)
@@ -262,7 +254,6 @@ export function App() {
   const pendingChatEventsRef = useRef<Map<string, OusiaChatEvent[]>>(new Map())
   const pendingChatEventsFrameRef = useRef(0)
   const sidebarResizeFrameRef = useRef(0)
-  const terminalPanelResizeFrameRef = useRef(0)
   const [runStatusBySession, setRunStatusBySession] = useState<
     Record<string, AgentRunStatus>
   >({})
@@ -341,9 +332,7 @@ export function App() {
       projects,
       shellLayout: {
         sidebarWidth,
-        terminalPanelWidth,
         isSidebarCollapsed,
-        isTerminalPanelCollapsed,
         sidebarSectionOrder,
       },
       windowState: initialState.windowState,
@@ -356,14 +345,12 @@ export function App() {
       expandedProjectIds,
       initialState.windowState,
       isSidebarCollapsed,
-      isTerminalPanelCollapsed,
       projects,
       selectedSession?.id,
       sessions,
       settings,
       sidebarSectionOrder,
       sidebarWidth,
-      terminalPanelWidth,
     ]
   )
   const handleSettingsChange = useCallback(
@@ -407,7 +394,10 @@ export function App() {
       const targetEvents = pendingEvents.get(targetKey)
       if (targetEvents) {
         const previousEvent = targetEvents[targetEvents.length - 1]
-        if (canMergeTextDeltaEvents(previousEvent, event)) {
+        if (
+          isTextDeltaEvent(event) &&
+          canMergeTextDeltaEvents(previousEvent, event)
+        ) {
           targetEvents[targetEvents.length - 1] = {
             ...event,
             delta: previousEvent.delta + event.delta,
@@ -437,10 +427,7 @@ export function App() {
       setSettings(state.settings)
       setTheme(state.settings.theme)
       setSidebarWidth(state.shellLayout.sidebarWidth)
-      setTerminalPanelWidth(state.shellLayout.terminalPanelWidth)
       setIsSidebarCollapsed(state.shellLayout.isSidebarCollapsed)
-      setIsTerminalPanelCollapsed(state.shellLayout.isTerminalPanelCollapsed)
-      setHasTerminalPanelMounted(!state.shellLayout.isTerminalPanelCollapsed)
       setSidebarSectionOrder(
         normalizeSidebarSectionOrder(state.shellLayout.sidebarSectionOrder)
       )
@@ -826,9 +813,6 @@ export function App() {
       if (sidebarResizeFrameRef.current) {
         window.cancelAnimationFrame(sidebarResizeFrameRef.current)
       }
-      if (terminalPanelResizeFrameRef.current) {
-        window.cancelAnimationFrame(terminalPanelResizeFrameRef.current)
-      }
       pendingChatEventsRef.current = new Map()
     }
   }, [])
@@ -852,9 +836,9 @@ export function App() {
   const showZoomIndicator = useCallback((zoomPercent: number) => {
     setZoomIndicatorPercent(zoomPercent)
     if (zoomIndicatorTimerRef.current) {
-      window.clearTimeout(zoomIndicatorTimerRef.current)
+      globalThis.clearTimeout(zoomIndicatorTimerRef.current)
     }
-    zoomIndicatorTimerRef.current = window.setTimeout(() => {
+    zoomIndicatorTimerRef.current = globalThis.setTimeout(() => {
       setZoomIndicatorPercent(null)
       zoomIndicatorTimerRef.current = null
     }, 1200)
@@ -1119,18 +1103,17 @@ export function App() {
       projectId: selectedSession.projectId,
       time: now,
     }
-    const branchItems = selectedItems
+    const branchItems: ChatItem[] = selectedItems
       .slice(0, branchIndex + 1)
-      .map((item) =>
-        item.role === "tool"
-          ? { ...item }
-          : {
-              ...item,
-              attachments: item.attachments
-                ? item.attachments.map((attachment) => ({ ...attachment }))
-                : undefined,
-            }
-      )
+      .map((item) => {
+        if (item.role === "tool") {
+          return { ...item }
+        }
+        const attachments = item.attachments?.map((attachment) => ({
+          ...attachment,
+        }))
+        return attachments ? { ...item, attachments } : { ...item }
+      })
     const branchKey = chatKey(currentProject.path, branchSession.id)
     const branchSourceItem = selectedItems[branchIndex]
 
@@ -1212,64 +1195,8 @@ export function App() {
     return shellRef.current?.getBoundingClientRect().width ?? window.innerWidth
   }
 
-  useEffect(() => {
-    const shell = shellRef.current
-    if (!shell) {
-      return
-    }
-
-    let animationFrameId = 0
-    const updateShellWidth = (width: number) => {
-      const nextWidth = Math.round(width)
-      if (!nextWidth || shellWidthRef.current === nextWidth) {
-        return
-      }
-
-      shellWidthRef.current = nextWidth
-      setShellWidth(nextWidth)
-    }
-
-    updateShellWidth(shell.getBoundingClientRect().width)
-    const resizeObserver = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect.width
-      if (!width) {
-        return
-      }
-
-      cancelAnimationFrame(animationFrameId)
-      animationFrameId = requestAnimationFrame(() => updateShellWidth(width))
-    })
-    resizeObserver.observe(shell)
-    return () => {
-      cancelAnimationFrame(animationFrameId)
-      resizeObserver.disconnect()
-    }
-  }, [])
-
-  const currentShellWidth = shellWidth || getShellWidth()
-  const isTerminalPanelOpen = isAppStateLoaded && !isTerminalPanelCollapsed
   const preferredSidebarWidth = isSidebarCollapsed ? 0 : sidebarWidth
-  const sidebarColumnWidth =
-    preferredSidebarWidth + (isSidebarCollapsed ? 0 : RESIZE_HANDLE_WIDTH)
-  const availableWorkAreaWidth = Math.max(
-    0,
-    currentShellWidth - sidebarColumnWidth
-  )
-  const splitTerminalLayoutMinWidth =
-    MIN_CHAT_WIDTH + RESIZE_HANDLE_WIDTH + MIN_TERMINAL_PANEL_COMPACT_WIDTH
-  const isTerminalPanelSolo =
-    isTerminalPanelOpen && availableWorkAreaWidth < splitTerminalLayoutMinWidth
-  const preferredTerminalPanelWidth = isTerminalPanelOpen
-    ? Math.max(MIN_TERMINAL_PANEL_WIDTH, terminalPanelWidth)
-    : 0
   const effectiveSidebarWidth = preferredSidebarWidth
-  const splitTerminalPanelWidth = Math.max(
-    MIN_TERMINAL_PANEL_COMPACT_WIDTH,
-    availableWorkAreaWidth - MIN_CHAT_WIDTH - RESIZE_HANDLE_WIDTH
-  )
-  const effectiveTerminalPanelWidth = isTerminalPanelSolo
-    ? availableWorkAreaWidth
-    : Math.min(preferredTerminalPanelWidth, splitTerminalPanelWidth)
 
   function beginSidebarResize(event: PointerEvent<HTMLDivElement>) {
     event.preventDefault()
@@ -1332,12 +1259,7 @@ export function App() {
 
       const maxSidebarWidth = Math.min(
         MAX_SIDEBAR_WIDTH,
-        shellWidth -
-          MIN_CHAT_WIDTH -
-          (isTerminalPanelOpen
-            ? RESIZE_HANDLE_WIDTH + effectiveTerminalPanelWidth
-            : 0) -
-          RESIZE_HANDLE_WIDTH
+        shellWidth - MIN_CHAT_WIDTH - RESIZE_HANDLE_WIDTH
       )
       const nextSidebarWidth = clamp(
         rawSidebarWidth,
@@ -1367,103 +1289,8 @@ export function App() {
     })
   }
 
-  function beginTerminalPanelResize(event: PointerEvent<HTMLDivElement>) {
-    event.preventDefault()
-    const resizeTarget = event.currentTarget
-    resizeTarget.setPointerCapture(event.pointerId)
-    setIsShellResizing(true)
-    const startX = event.clientX
-    const startTerminalPanelWidth = terminalPanelWidth
-    const shellWidth = getShellWidth()
-    let pendingTerminalPanelWidth = startTerminalPanelWidth
-    let isStopped = false
-
-    function commitTerminalPanelWidth(nextTerminalPanelWidth: number) {
-      pendingTerminalPanelWidth = nextTerminalPanelWidth
-      if (terminalPanelResizeFrameRef.current) {
-        return
-      }
-      terminalPanelResizeFrameRef.current = window.requestAnimationFrame(() => {
-        terminalPanelResizeFrameRef.current = 0
-        terminalPanelShellRef.current?.style.setProperty(
-          "--ousia-terminal-live-width",
-          `${pendingTerminalPanelWidth}px`
-        )
-      })
-    }
-
-    function handlePointerMove(moveEvent: globalThis.PointerEvent) {
-      const maxTerminalPanelWidth =
-        shellWidth -
-        MIN_CHAT_WIDTH -
-        (isSidebarCollapsed ? 0 : effectiveSidebarWidth + RESIZE_HANDLE_WIDTH) -
-        RESIZE_HANDLE_WIDTH
-      const nextTerminalPanelWidth = clamp(
-        startTerminalPanelWidth - (moveEvent.clientX - startX),
-        MIN_TERMINAL_PANEL_COMPACT_WIDTH,
-        Math.max(MIN_TERMINAL_PANEL_COMPACT_WIDTH, maxTerminalPanelWidth)
-      )
-      commitTerminalPanelWidth(nextTerminalPanelWidth)
-    }
-
-    function stopTerminalPanelResize() {
-      if (isStopped) {
-        return
-      }
-      isStopped = true
-      if (resizeTarget.hasPointerCapture(event.pointerId)) {
-        resizeTarget.releasePointerCapture(event.pointerId)
-      }
-      if (terminalPanelResizeFrameRef.current) {
-        window.cancelAnimationFrame(terminalPanelResizeFrameRef.current)
-        terminalPanelResizeFrameRef.current = 0
-      }
-      terminalPanelShellRef.current?.style.setProperty(
-        "--ousia-terminal-live-width",
-        `${pendingTerminalPanelWidth}px`
-      )
-      setTerminalPanelWidth(pendingTerminalPanelWidth)
-      window.removeEventListener("pointermove", handlePointerMove)
-      window.removeEventListener("pointerup", handlePointerUp)
-      window.removeEventListener("pointercancel", handlePointerUp)
-      window.removeEventListener("blur", handlePointerUp)
-      document.removeEventListener("visibilitychange", handleVisibilityChange)
-      resizeTarget.removeEventListener("lostpointercapture", handlePointerUp)
-      setIsShellResizing(false)
-    }
-
-    function handlePointerUp() {
-      stopTerminalPanelResize()
-    }
-
-    function handleVisibilityChange() {
-      if (document.visibilityState !== "visible") {
-        stopTerminalPanelResize()
-      }
-    }
-
-    window.addEventListener("pointermove", handlePointerMove)
-    window.addEventListener("pointerup", handlePointerUp, { once: true })
-    window.addEventListener("pointercancel", handlePointerUp, { once: true })
-    window.addEventListener("blur", handlePointerUp, { once: true })
-    document.addEventListener("visibilitychange", handleVisibilityChange)
-    resizeTarget.addEventListener("lostpointercapture", handlePointerUp, {
-      once: true,
-    })
-  }
-
-  const shouldShowTerminalPanel = isTerminalPanelOpen
-  const shouldRenderTerminalPanel =
-    isAppStateLoaded && hasTerminalPanelMounted && shouldShowTerminalPanel
-  const shouldShowChatArea = !isTerminalPanelSolo
-
   const expandSidebar = useCallback(() => {
     setIsSidebarCollapsed(false)
-  }, [])
-
-  const expandTerminalPanel = useCallback(() => {
-    setHasTerminalPanelMounted(true)
-    setIsTerminalPanelCollapsed(false)
   }, [])
 
   useEffect(() => {
@@ -1559,80 +1386,28 @@ export function App() {
               onSettingsChange={handleSettingsChange}
             />
           ) : (
-            <>
-              {shouldShowChatArea ? (
-                <ChatArea
-                  currentProject={selectedSession ? currentProject : undefined}
-                  currentSession={selectedSession}
-                  items={selectedItems}
-                  isAgentWorking={
-                    selectedChatKey
-                      ? runStatusBySession[selectedChatKey] === "working"
-                      : false
-                  }
-                  isSidebarCollapsed={isSidebarCollapsed}
-                  isWindowFullscreen={isWindowFullscreen}
-                  isTerminalPanelCollapsed={!shouldShowTerminalPanel}
-                  onLocalEvent={appendLocalEvent}
-                  onGenerateSessionTitle={handleGenerateSessionTitle}
-                  onBranchFromMessage={handleBranchFromMessage}
-                  contextUsage={selectedContextUsage}
-                  onExpandTerminalPanel={() => {
-                    expandTerminalPanel()
-                  }}
-                  onSettingsChange={handleSettingsChange}
-                  modelRegistry={modelRegistry}
-                  queuedChatState={selectedQueuedChatState}
-                  settings={settings}
-                  language={settings.language}
-                  style={
-                    !shouldShowTerminalPanel
-                      ? { flex: "1 1 0", width: "auto" }
-                      : {
-                          flex: "1 1 0",
-                          minWidth: MIN_CHAT_WIDTH,
-                          width: "auto",
-                        }
-                  }
-                />
-              ) : null}
-              {shouldRenderTerminalPanel ? (
-                <div
-                  ref={terminalPanelShellRef}
-                  aria-hidden={!shouldShowTerminalPanel}
-                  className={
-                    shouldShowTerminalPanel
-                      ? "flex h-full max-h-full min-h-0 shrink-0 overflow-hidden"
-                      : "hidden"
-                  }
-                  style={
-                    shouldShowTerminalPanel
-                      ? ({
-                          "--ousia-terminal-live-width": `${effectiveTerminalPanelWidth}px`,
-                          width: "var(--ousia-terminal-live-width)",
-                        } as CSSProperties)
-                      : undefined
-                  }
-                >
-                  {isTerminalPanelSolo ? null : (
-                    <ResizeHandle
-                      label={t.shell.resizeTerminal}
-                      onPointerDown={beginTerminalPanelResize}
-                      showLine
-                    />
-                  )}
-                  <TerminalPanel
-                    projectPath={selectedSession ? currentProject.path : ""}
-                    sessionId={selectedSession?.id ?? ""}
-                    isVisible={shouldShowTerminalPanel}
-                    isJoinedToChat={!isTerminalPanelSolo && shouldShowChatArea}
-                    language={settings.language}
-                    resolvedTheme={resolvedTheme}
-                    onCollapse={() => setIsTerminalPanelCollapsed(true)}
-                  />
-                </div>
-              ) : null}
-            </>
+            <ChatArea
+              currentProject={selectedSession ? currentProject : undefined}
+              currentSession={selectedSession}
+              items={selectedItems}
+              isAgentWorking={
+                selectedChatKey
+                  ? runStatusBySession[selectedChatKey] === "working"
+                  : false
+              }
+              isSidebarCollapsed={isSidebarCollapsed}
+              isWindowFullscreen={isWindowFullscreen}
+              onLocalEvent={appendLocalEvent}
+              onGenerateSessionTitle={handleGenerateSessionTitle}
+              onBranchFromMessage={handleBranchFromMessage}
+              contextUsage={selectedContextUsage}
+              onSettingsChange={handleSettingsChange}
+              modelRegistry={modelRegistry}
+              queuedChatState={selectedQueuedChatState}
+              settings={settings}
+              language={settings.language}
+              style={{ flex: "1 1 0", width: "auto" }}
+            />
           )}
         </div>
       </div>

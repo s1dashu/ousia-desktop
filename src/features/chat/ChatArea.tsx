@@ -132,13 +132,11 @@ type ChatAreaProps = {
   isAgentWorking: boolean
   isSidebarCollapsed: boolean
   isWindowFullscreen: boolean
-  isTerminalPanelCollapsed: boolean
   language: OusiaLanguage
   modelRegistry: OusiaModelRegistryResult | undefined
   onLocalEvent: (event: OusiaChatEvent) => void
   onGenerateSessionTitle: (sessionId: string, firstPrompt: string) => void
   onBranchFromMessage: (messageId: string) => void
-  onExpandTerminalPanel: () => void
   onSettingsChange: (settings: AppSettings) => void
   queuedChatState: {
     steering: string[]
@@ -162,13 +160,11 @@ export function ChatArea({
   isAgentWorking,
   isSidebarCollapsed,
   isWindowFullscreen,
-  isTerminalPanelCollapsed,
   language,
   modelRegistry,
   onLocalEvent,
   onGenerateSessionTitle,
   onBranchFromMessage,
-  onExpandTerminalPanel,
   onSettingsChange,
   queuedChatState,
   settings,
@@ -242,10 +238,12 @@ export function ChatArea({
     (contextUsageState?.key === currentContextUsageKey
       ? contextUsageState.usage
       : undefined)
-  const hasActualContextUsage = typeof contextUsage?.percent === "number"
+  const contextUsagePercent =
+    typeof contextUsage?.percent === "number" ? contextUsage.percent : undefined
+  const hasActualContextUsage = typeof contextUsagePercent === "number"
   const contextRemainingPercent =
     hasActualContextUsage
-      ? Math.max(0, Math.round(100 - contextUsage.percent))
+      ? Math.max(0, Math.round(100 - contextUsagePercent))
       : 0
   const contextUsageStrokeDasharray = `${Math.max(
     0,
@@ -897,10 +895,7 @@ export function ChatArea({
   return (
     <section
       className={cn(
-        "@container/chat ousia-main-panel ousia-squircle-corners relative z-20 flex min-w-0 shrink-0 flex-col overflow-hidden rounded-l-[var(--ousia-chat-panel-radius)] rounded-tr-[var(--ousia-chat-panel-radius)] rounded-br-none border-[0.5px] border-border/60 bg-white shadow-[var(--ousia-chat-composer-shadow)] dark:bg-card",
-        isTerminalPanelCollapsed
-          ? "rounded-br-[var(--ousia-chat-panel-radius)]"
-          : "border-r-0"
+        "@container/chat ousia-main-panel ousia-squircle-corners relative z-20 flex min-w-0 shrink-0 flex-col overflow-hidden rounded-l-[var(--ousia-chat-panel-radius)] rounded-r-[var(--ousia-chat-panel-radius)] border-[0.5px] border-border/60 bg-white shadow-[var(--ousia-chat-composer-shadow)] dark:bg-card"
       )}
       style={style}
       onKeyDownCapture={handleEscapeKey}
@@ -911,11 +906,9 @@ export function ChatArea({
         isSessionMenuOpen={isSessionMenuOpen}
         isSidebarCollapsed={isSidebarCollapsed}
         isScrolled={isChatScrolled}
-        isTerminalPanelCollapsed={isTerminalPanelCollapsed}
         isWindowFullscreen={isWindowFullscreen}
         onCopySessionHistory={() => void handleCopySessionHistory()}
         onExportSession={(format) => void handleExportSession(format)}
-        onExpandTerminalPanel={onExpandTerminalPanel}
         onSessionMenuOpenChange={(open) => {
           setOpenSessionMenuKey(open ? currentSessionMenuKey : null)
           if (!open) {

@@ -1,16 +1,13 @@
 # Design Context
 
-The `simple-gui` branch keeps the interface quiet and direct: sidebar, chat, and
-a right-side terminal. Avoid reintroducing app-launcher, marketplace, tabbed
-workspace, or extension-management UI.
+The `simple-gui` branch keeps the interface quiet and direct: sidebar plus chat.
+Avoid reintroducing app-launcher, marketplace, tabbed workspace, right-side
+workspace panels, or extension-management UI.
 
 ## Shell
 
 - Left sidebar: projects, sessions, and settings.
 - Center: chat and model controls.
-- Right: terminal only.
-- The chat header shows a terminal icon when the right panel is collapsed. Click
-  opens the terminal directly.
 - Keep resize handles thin and unobtrusive.
 - Preserve current shadcn theme direction and compact desktop density.
 
@@ -20,16 +17,6 @@ workspace, or extension-management UI.
   and workspace-level signals.
 - Route icon imports through `src/components/icons/huge-icons.tsx` so icon
   sizing and stroke handling stay consistent.
-- Use the exported `SquareTerminal` HugeIcons mapping for the right-panel
-  open/collapse action.
-
-## Terminal Panel
-
-- No tab strip, picker, or separate "Workspace" title row.
-- The panel should fill the available right-side area edge to edge.
-- Terminal colors must track the resolved light/dark theme.
-- Terminal text should use the bundled terminal mono font stack and avoid
-  viewport-scaled font sizing.
 
 ## Settings
 

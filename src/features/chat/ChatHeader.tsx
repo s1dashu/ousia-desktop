@@ -2,7 +2,6 @@ import {
   Check,
   Copy,
   MoreHorizontal,
-  SquareTerminal,
 } from "@/components/icons/huge-icons"
 
 import type { SessionRecord } from "@/app/app-state"
@@ -24,11 +23,9 @@ type ChatHeaderProps = {
   isSessionMenuOpen: boolean
   isSidebarCollapsed: boolean
   isScrolled: boolean
-  isTerminalPanelCollapsed: boolean
   isWindowFullscreen: boolean
   onCopySessionHistory: () => void
   onExportSession: (format: "markdown" | "html" | "jsonl") => void
-  onExpandTerminalPanel: () => void
   onSessionMenuOpenChange: (open: boolean) => void
   t: ReturnType<typeof getMessages>
 }
@@ -39,11 +36,9 @@ export function ChatHeader({
   isSessionMenuOpen,
   isSidebarCollapsed,
   isScrolled,
-  isTerminalPanelCollapsed,
   isWindowFullscreen,
   onCopySessionHistory,
   onExportSession,
-  onExpandTerminalPanel,
   onSessionMenuOpenChange,
   t,
 }: ChatHeaderProps) {
@@ -129,20 +124,7 @@ export function ChatHeader({
           </DropdownMenu>
         </div>
       </div>
-      <div className="window-drag pointer-events-none relative z-10 flex shrink-0 items-center gap-1">
-        {isTerminalPanelCollapsed ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="window-no-drag pointer-events-auto size-6 rounded-md hover:bg-transparent focus-visible:bg-transparent"
-            aria-label={t.chat.openTerminal}
-            onClick={onExpandTerminalPanel}
-          >
-            <SquareTerminal size={18} strokeWidth={1.5} />
-          </Button>
-        ) : null}
-      </div>
+      <div className="window-drag pointer-events-none relative z-10 flex shrink-0 items-center gap-1" />
     </header>
   )
 }
