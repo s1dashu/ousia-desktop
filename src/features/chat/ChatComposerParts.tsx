@@ -87,7 +87,7 @@ export function QueuedMessageList({
           >
             {readOnly ? null : (
               <GripVertical
-                size={12}
+                size={14}
                 strokeWidth={1.5}
                 className="shrink-0 cursor-grab"
               />
@@ -110,30 +110,30 @@ export function QueuedMessageList({
                   variant="ghost"
                   size="icon-xs"
                   aria-label={t.chat.sendNow}
-                  className="size-[18px] rounded-md text-muted-foreground hover:text-foreground [&_svg]:size-3"
+                  className="size-5 rounded-md text-muted-foreground hover:text-foreground [&_svg]:size-3.5"
                   onClick={() => onSendNow(message.id)}
                 >
-                  <SendHorizontal size={12} />
+                  <SendHorizontal size={14} />
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon-xs"
                   aria-label={t.app.edit}
-                  className="size-[18px] rounded-md text-muted-foreground hover:text-foreground [&_svg]:size-3"
+                  className="size-5 rounded-md text-muted-foreground hover:text-foreground [&_svg]:size-3.5"
                   onClick={() => onEdit(message.id)}
                 >
-                  <Pencil size={12} />
+                  <Pencil size={14} />
                 </Button>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon-xs"
                   aria-label={t.app.delete}
-                  className="size-[18px] rounded-md text-muted-foreground hover:text-foreground [&_svg]:size-3"
+                  className="size-5 rounded-md text-muted-foreground hover:text-foreground [&_svg]:size-3.5"
                   onClick={() => onDelete(message.id)}
                 >
-                  <Trash2 size={12} />
+                  <Trash2 size={14} />
                 </Button>
               </div>
             )}

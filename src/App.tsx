@@ -1493,7 +1493,7 @@ export function App() {
     <main
       ref={shellRef}
       data-shell-resizing={isShellResizing ? "true" : undefined}
-      className="relative flex h-screen min-h-screen w-screen min-w-0 overflow-hidden rounded-[var(--ousia-window-radius)] bg-[var(--ousia-shell-glass)] text-foreground"
+      className="relative flex h-screen min-h-screen w-screen min-w-0 overflow-hidden rounded-[var(--ousia-window-radius)] bg-background text-foreground"
     >
       <div
         aria-hidden={zoomIndicatorPercent === null}
@@ -1547,7 +1547,7 @@ export function App() {
           />
         </div>
       )}
-      <div className="relative z-20 min-w-0 flex-1 bg-[var(--ousia-shell-glass)]">
+      <div className="relative z-20 min-w-0 flex-1 bg-background">
         <div className="flex h-full min-w-0 overflow-visible">
           {isSettingsOpen ? (
             <SettingsPage

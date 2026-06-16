@@ -147,19 +147,14 @@
     --ousia-chat-content-max-width: 64rem;
     --ousia-chat-gutter: 20px;
     --ousia-chat-panel-radius: 24px;
-    --ousia-chat-panel-bg: #ffffff;
-    --ousia-chat-panel-shadow: var(--ousia-chat-composer-shadow);
     --ousia-chat-composer-radius: 36px;
-    --ousia-chat-composer-ring-size: 4px;
+    --ousia-chat-composer-ring-size: 3px;
     --ousia-chat-composer-ring-color: rgba(36, 31, 27, 0.055);
     --ousia-chat-composer-shadow: 0 1px 2px rgba(24, 24, 27, 0.035), 0 8px 18px -15px rgba(24, 24, 27, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.56);
     --ousia-chat-composer-shadow-focus: 0 1px 3px rgba(24, 24, 27, 0.045), 0 10px 24px -15px rgba(24, 24, 27, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.64);
     --ousia-floating-panel-shadow: 0 -2px 10px -8px rgba(24, 24, 27, 0.08), 0 2px 7px -5px rgba(24, 24, 27, 0.1), 0 12px 28px -18px rgba(24, 24, 27, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.56);
     --ousia-sidebar-selected-radius: 16px;
     --ousia-sidebar-selected-shadow: 0 0 0 0.5px rgba(24, 24, 27, 0.035), 0 1px 2px rgba(24, 24, 27, 0.035), 0 4px 10px -8px rgba(24, 24, 27, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.62);
-    --ousia-sidebar-selected-bg: #ffffff;
-    --ousia-chat-composer-bg: var(--ousia-sidebar);
-    --ousia-chat-header-bg: var(--ousia-chat-panel-bg);
     --ousia-settings-content-max-width: 44rem;
     --ousia-settings-gutter: 32px;
     --background: #fdfbf9;
@@ -194,15 +189,10 @@
     --sidebar-accent-foreground: #241f1b;
     --sidebar-border: color-mix(in srgb, #b7aaa2 34%, transparent);
     --sidebar-ring: #9b8f87;
-    --ousia-sidebar-glass-codex-like-snapshot: rgba(217, 242, 255, 0.18);
-    --ousia-sidebar-glass-border-codex-like-snapshot: rgba(93, 139, 158, 0.16);
     --ousia-sidebar: color-mix(in srgb, var(--sidebar) 72%, var(--background));
     --ousia-sidebar-accent: color-mix(in srgb, var(--sidebar-accent) 68%, var(--sidebar));
     --ousia-sidebar-border: color-mix(in srgb, var(--sidebar-border) 72%, transparent);
     --ousia-sidebar-ring: color-mix(in srgb, var(--sidebar-ring) 78%, var(--sidebar));
-    --ousia-sidebar-glass: var(--ousia-sidebar);
-    --ousia-shell-glass: var(--ousia-sidebar);
-    --ousia-sidebar-glass-border: var(--ousia-sidebar-border);
 }
 
 @media (max-width: 560px) {
@@ -265,53 +255,6 @@
     --sidebar-accent-foreground: #1f1f1b;
     --sidebar-border: color-mix(in srgb, #a8a89a 26%, transparent);
     --sidebar-ring: #8c8c80;
-}
-
-:root[data-radix-color-scale="glass"] {
-    --background: #fbfbfb;
-    --foreground: #222222;
-    --card: #f6f6f6;
-    --card-foreground: #222222;
-    --popover: #ffffff;
-    --popover-foreground: #222222;
-    --primary: #222222;
-    --primary-foreground: #ffffff;
-    --secondary: #f6f6f6;
-    --secondary-foreground: #222222;
-    --muted: #f4f4f4;
-    --muted-foreground: #6f6f6f;
-    --accent: #f4f4f4;
-    --accent-foreground: #222222;
-    --border: color-mix(in srgb, #9f9f9f 30%, transparent);
-    --input: color-mix(in srgb, #ffffff 72%, #d8d8d8);
-    --ring: #a0a0a0;
-    --chart-1: #f2f2f2;
-    --chart-2: #d8d8d8;
-    --chart-3: #777777;
-    --chart-4: #4f4f4f;
-    --chart-5: #222222;
-    --sidebar: rgba(255, 255, 255, 0.06);
-    --sidebar-foreground: #222222;
-    --sidebar-primary: #222222;
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: rgba(255, 255, 255, 0.34);
-    --sidebar-accent-foreground: #222222;
-    --sidebar-border: color-mix(in srgb, #9f9f9f 18%, transparent);
-    --sidebar-ring: #a0a0a0;
-    --ousia-sidebar: rgba(255, 255, 255, 0.06);
-    --ousia-sidebar-accent: rgba(255, 255, 255, 0.34);
-    --ousia-sidebar-border: color-mix(in srgb, #9f9f9f 14%, transparent);
-    --ousia-sidebar-ring: #a0a0a0;
-    --ousia-sidebar-glass: rgba(255, 255, 255, 0.06);
-    --ousia-shell-glass: var(--ousia-sidebar-glass);
-    --ousia-sidebar-glass-border: rgba(0, 0, 0, 0.055);
-    --ousia-chat-panel-bg: #ffffff;
-    --ousia-chat-panel-shadow: -4px 0 16px -14px rgba(0, 0, 0, 0.3), 0 0 0 0.5px rgba(0, 0, 0, 0.035), 0 8px 18px -17px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.42);
-    --ousia-sidebar-selected-bg: #ffffff;
-    --ousia-sidebar-selected-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.035), 0 1px 2px rgba(0, 0, 0, 0.035), 0 6px 16px -13px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.72);
-    --ousia-chat-composer-bg: rgba(246, 246, 246, 0.72);
-    --ousia-chat-composer-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.045), 0 1px 2px rgba(0, 0, 0, 0.035), 0 10px 24px -16px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.56);
-    --ousia-chat-composer-shadow-focus: 0 0 0 0.5px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.045), 0 12px 28px -16px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.64);
 }
 
 :root[data-radix-color-scale="sand"] {
@@ -898,15 +841,6 @@
     --sidebar-accent-foreground: #f6f1ed;
     --sidebar-border: color-mix(in srgb, #f0e8e0 12%, transparent);
     --sidebar-ring: #8f8177;
-    --ousia-chat-panel-bg: var(--card);
-    --ousia-chat-header-bg: var(--ousia-chat-panel-bg);
-    --ousia-chat-composer-ring-color: rgba(255, 255, 255, 0.035);
-    --ousia-chat-composer-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.055), 0 8px 18px -15px rgba(0, 0, 0, 0.56), inset 0 1px 0 rgba(255, 255, 255, 0.035);
-    --ousia-chat-composer-shadow-focus: 0 0 0 0.5px rgba(255, 255, 255, 0.075), 0 10px 24px -14px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.055);
-    --ousia-floating-panel-shadow: 0 -2px 10px -8px rgba(0, 0, 0, 0.42), 0 2px 7px -5px rgba(0, 0, 0, 0.5), 0 12px 28px -18px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.055);
-    --ousia-sidebar-selected-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.05), 0 1px 2px rgba(0, 0, 0, 0.24), 0 4px 10px -8px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.045);
-    --ousia-sidebar-selected-bg: color-mix(in oklch, var(--card) 78%, var(--foreground) 6%);
-    --ousia-chat-composer-bg: color-mix(in oklch, var(--background) 72%, var(--card));
 }
 
 .dark[data-radix-color-scale="paper"] {
@@ -940,55 +874,6 @@
     --sidebar-accent-foreground: #f4f4ef;
     --sidebar-border: color-mix(in srgb, #eeeee6 12%, transparent);
     --sidebar-ring: #8c8c82;
-}
-
-.dark[data-radix-color-scale="glass"] {
-    --background: #111111;
-    --foreground: #f4f4f4;
-    --card: #202020;
-    --card-foreground: #f4f4f4;
-    --popover: #1b1b1b;
-    --popover-foreground: #f4f4f4;
-    --primary: #f5f5f5;
-    --primary-foreground: #101010;
-    --secondary: #242424;
-    --secondary-foreground: #f4f4f4;
-    --muted: #242424;
-    --muted-foreground: #b0b0b0;
-    --accent: #2c2c2c;
-    --accent-foreground: #f4f4f4;
-    --border: color-mix(in srgb, #ffffff 13%, transparent);
-    --input: color-mix(in srgb, #ffffff 11%, transparent);
-    --ring: #8f8f8f;
-    --chart-1: #eeeeee;
-    --chart-2: #c7c7c7;
-    --chart-3: #b7b7b7;
-    --chart-4: #e0e0e0;
-    --chart-5: #575757;
-    --sidebar: rgba(26, 26, 26, 0.58);
-    --sidebar-foreground: #f4f4f4;
-    --sidebar-primary: #f4f4f4;
-    --sidebar-primary-foreground: #101010;
-    --sidebar-accent: rgba(255, 255, 255, 0.075);
-    --sidebar-accent-foreground: #f4f4f4;
-    --sidebar-border: color-mix(in srgb, #ffffff 10%, transparent);
-    --sidebar-ring: #8f8f8f;
-    --ousia-sidebar: rgba(26, 26, 26, 0.58);
-    --ousia-sidebar-accent: rgba(255, 255, 255, 0.075);
-    --ousia-sidebar-border: color-mix(in srgb, #ffffff 9%, transparent);
-    --ousia-sidebar-ring: #8f8f8f;
-    --ousia-sidebar-glass: rgba(20, 20, 20, 0.72);
-    --ousia-shell-glass: var(--ousia-sidebar-glass);
-    --ousia-sidebar-glass-border: rgba(255, 255, 255, 0.07);
-    --ousia-chat-panel-bg: #111111;
-    --ousia-chat-header-bg: var(--ousia-chat-panel-bg);
-    --ousia-chat-panel-shadow: -5px 0 18px -14px rgba(0, 0, 0, 0.85), 0 0 0 0.5px rgba(255, 255, 255, 0.055), 0 12px 28px -18px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.045);
-    --ousia-sidebar-selected-bg: rgba(255, 255, 255, 0.12);
-    --ousia-sidebar-selected-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.07), 0 1px 2px rgba(0, 0, 0, 0.28), 0 8px 18px -14px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.055);
-    --ousia-chat-composer-bg: rgba(31, 31, 31, 0.92);
-    --ousia-chat-composer-ring-color: rgba(255, 255, 255, 0.04);
-    --ousia-chat-composer-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.065), 0 1px 2px rgba(0, 0, 0, 0.28), 0 12px 28px -16px rgba(0, 0, 0, 0.76), inset 0 1px 0 rgba(255, 255, 255, 0.045);
-    --ousia-chat-composer-shadow-focus: 0 0 0 0.5px rgba(255, 255, 255, 0.09), 0 1px 3px rgba(0, 0, 0, 0.34), 0 14px 32px -16px rgba(0, 0, 0, 0.86), inset 0 1px 0 rgba(255, 255, 255, 0.065);
 }
 
 .dark[data-radix-color-scale="sand"] {
@@ -1212,18 +1097,11 @@
     --sidebar-accent-foreground: #f4f0ec;
     --sidebar-border: color-mix(in srgb, #f0e8e0 12%, transparent);
     --sidebar-ring: color-mix(in oklch, var(--radix-scale-9) 58%, #bdb7b0);
-    --ousia-sidebar-glass-codex-like-snapshot: rgba(29, 47, 56, 0.2);
-    --ousia-sidebar-glass-border-codex-like-snapshot: rgba(231, 246, 255, 0.1);
-    --ousia-sidebar-glass: var(--ousia-sidebar);
-    --ousia-shell-glass: var(--ousia-sidebar);
-    --ousia-sidebar-glass-border: var(--ousia-sidebar-border);
     --ousia-chat-composer-ring-color: rgba(255, 255, 255, 0.035);
-    --ousia-chat-composer-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.055), 0 8px 18px -15px rgba(0, 0, 0, 0.56), inset 0 1px 0 rgba(255, 255, 255, 0.035);
-    --ousia-chat-composer-shadow-focus: 0 0 0 0.5px rgba(255, 255, 255, 0.075), 0 10px 24px -14px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.055);
+    --ousia-chat-composer-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 8px 18px -15px rgba(0, 0, 0, 0.56), inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    --ousia-chat-composer-shadow-focus: 0 10px 24px -14px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.055);
     --ousia-floating-panel-shadow: 0 -2px 10px -8px rgba(0, 0, 0, 0.42), 0 2px 7px -5px rgba(0, 0, 0, 0.5), 0 12px 28px -18px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.055);
     --ousia-sidebar-selected-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.05), 0 1px 2px rgba(0, 0, 0, 0.24), 0 4px 10px -8px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.045);
-    --ousia-sidebar-selected-bg: color-mix(in oklch, var(--card) 78%, var(--foreground) 6%);
-    --ousia-chat-composer-bg: color-mix(in oklch, var(--background) 72%, var(--card));
 }
 
 @layer base {
@@ -1231,34 +1109,13 @@
     @apply border-border outline-ring/50;
     }
   body {
-    @apply text-foreground;
-    width: 100vw;
-    min-width: 100vw;
-    height: 100vh;
-    min-height: 100vh;
-    margin: 0;
-    overflow: hidden;
-    background: var(--ousia-shell-glass);
+    @apply bg-background text-foreground;
     }
   button:not(:disabled), [role="button"]:not(:disabled) {
     cursor: pointer;
     }
   html {
     @apply font-sans;
-    width: 100vw;
-    min-width: 100vw;
-    height: 100vh;
-    min-height: 100vh;
-    overflow: hidden;
-    background: var(--ousia-shell-glass);
-    }
-  #root {
-    width: 100vw;
-    min-width: 100vw;
-    height: 100vh;
-    min-height: 100vh;
-    overflow: hidden;
-    background: var(--ousia-shell-glass);
     }
   .window-drag {
     -webkit-app-region: drag;
@@ -1289,74 +1146,6 @@
   ::selection {
     @apply bg-primary text-primary-foreground;
     }
-
-  :root[data-radix-color-scale="glass"] [data-slot="input"],
-  :root[data-radix-color-scale="glass"] [data-slot="select-trigger"] {
-    border-color: rgba(0, 0, 0, 0.1);
-    background-color: rgba(255, 255, 255, 0.58);
-  }
-
-  :root[data-radix-color-scale="glass"]
-    .ousia-chat-markdown
-    [data-streamdown="code-block"],
-  :root[data-radix-color-scale="glass"]
-    .ousia-chat-markdown
-    [data-streamdown="table-wrapper"] {
-    background-color: rgba(248, 248, 248, 0.72);
-  }
-
-  :root[data-radix-color-scale="glass"]
-    .ousia-chat-markdown
-    [data-streamdown="code-block-body"],
-  :root[data-radix-color-scale="glass"]
-    .ousia-chat-markdown
-    [data-streamdown="table-wrapper"]
-    > div:last-child {
-    background-color: rgba(251, 251, 251, 0.92);
-  }
-
-  :root[data-radix-color-scale="glass"]
-    .ousia-chat-markdown
-    [data-streamdown="inline-code"],
-  :root[data-radix-color-scale="glass"]
-    .ousia-chat-markdown
-    [data-streamdown="table-header"] {
-    background-color: rgba(244, 244, 244, 0.86);
-  }
-
-  .dark[data-radix-color-scale="glass"] [data-slot="input"],
-  .dark[data-radix-color-scale="glass"] [data-slot="select-trigger"] {
-    border-color: color-mix(in srgb, #ffffff 13%, transparent);
-    background-color: rgba(255, 255, 255, 0.06);
-  }
-
-  .dark[data-radix-color-scale="glass"]
-    .ousia-chat-markdown
-    [data-streamdown="code-block"],
-  .dark[data-radix-color-scale="glass"]
-    .ousia-chat-markdown
-    [data-streamdown="table-wrapper"] {
-    background-color: rgba(255, 255, 255, 0.055);
-  }
-
-  .dark[data-radix-color-scale="glass"]
-    .ousia-chat-markdown
-    [data-streamdown="code-block-body"],
-  .dark[data-radix-color-scale="glass"]
-    .ousia-chat-markdown
-    [data-streamdown="table-wrapper"]
-    > div:last-child {
-    background-color: rgba(18, 18, 18, 0.88);
-  }
-
-  .dark[data-radix-color-scale="glass"]
-    .ousia-chat-markdown
-    [data-streamdown="inline-code"],
-  .dark[data-radix-color-scale="glass"]
-    .ousia-chat-markdown
-    [data-streamdown="table-header"] {
-    background-color: rgba(255, 255, 255, 0.085);
-  }
 }
 
 @layer utilities {
@@ -1428,37 +1217,6 @@
 
 .ousia-stable-scrollbar-gutter {
   scrollbar-gutter: stable both-edges;
-}
-
-.ousia-model-menu-scrollbar {
-  scrollbar-color: color-mix(in oklch, var(--muted-foreground) 18%, transparent)
-    transparent;
-  scrollbar-width: thin;
-}
-
-.ousia-model-menu-scrollbar::-webkit-scrollbar {
-  width: 4px;
-}
-
-.ousia-model-menu-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.ousia-model-menu-scrollbar::-webkit-scrollbar-thumb {
-  background-color: color-mix(
-    in oklch,
-    var(--muted-foreground) 18%,
-    transparent
-  );
-  border-radius: 999px;
-}
-
-.ousia-model-menu-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: color-mix(
-    in oklch,
-    var(--muted-foreground) 30%,
-    transparent
-  );
 }
 
 .ousia-hover-scrollbar:hover,
@@ -1599,27 +1357,6 @@
 
 .ousia-chat-message-text {
   font-family: var(--ousia-chat-font-family);
-}
-
-@supports (content-visibility: auto) {
-  .ousia-chat-message-contain {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 180px;
-  }
-
-  .ousia-chat-message-contain[data-chat-message-role="user"] {
-    contain-intrinsic-size: auto 72px;
-  }
-
-  .ousia-chat-message-contain[data-chat-message-role="tool"] {
-    contain-intrinsic-size: auto 96px;
-  }
-
-  .ousia-chat-message-contain[data-chat-message-role="thinking"],
-  .ousia-chat-message-contain[data-chat-message-role="system"],
-  .ousia-chat-message-contain[data-chat-message-role="error"] {
-    contain-intrinsic-size: auto 48px;
-  }
 }
 
 .ousia-chat-markdown :where(*, p, ul, ol, li, blockquote, table, th, td) {

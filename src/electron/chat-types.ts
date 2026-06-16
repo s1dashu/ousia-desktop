@@ -13,7 +13,6 @@ export type OusiaThinkingLevel =
 
 export const OUSIA_APPEARANCE_COLOR_SCALES = [
   "tea",
-  "glass",
   "paper",
   "sand",
   "gray",

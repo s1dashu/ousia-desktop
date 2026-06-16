@@ -198,6 +198,7 @@ export function ChatArea({
       percent: number | null
     }
   }>()
+  const [isChatScrolled, setIsChatScrolled] = useState(false)
   const [showScrollToLatest, setShowScrollToLatest] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -207,7 +208,6 @@ export function ChatArea({
   const isComposingRef = useRef(false)
   const isProgrammaticScrollRef = useRef(false)
   const wasAgentWorkingRef = useRef(isAgentWorking)
-  const previousSessionIdRef = useRef<string | undefined>(currentSession?.id)
   const currentSessionMenuKey = currentSession?.id ?? "no-session"
   const isSessionMenuOpen = openSessionMenuKey === currentSessionMenuKey
   const configuredModelPresets = getConfiguredModelPresets(
@@ -273,28 +273,6 @@ export function ChatArea({
   function isScrolledToLatest(node: HTMLDivElement) {
     return node.scrollHeight - node.scrollTop - node.clientHeight < 24
   }
-
-  useEffect(() => {
-    const nextSessionId = currentSession?.id
-    if (previousSessionIdRef.current === nextSessionId) {
-      return
-    }
-    previousSessionIdRef.current = nextSessionId
-    setDraft("")
-    setAttachments([])
-    setQueuedMessages([])
-    setEditingQueueId(null)
-    setDraggingQueueId(null)
-    setIsSending(false)
-    setIsInterrupting(false)
-    setIsFollowingLatest(true)
-    setOpenSessionMenuKey(null)
-    setIsModelMenuOpen(false)
-    setIsComposerSettingsOpen(false)
-    setIsCustomToolsDialogOpen(false)
-    setCopyStatus("idle")
-    setShowScrollToLatest(false)
-  }, [currentSession?.id])
 
   const scrollToLatest = useCallback((behavior: ScrollBehavior = "auto") => {
     const node = scrollRef.current
@@ -437,6 +415,7 @@ export function ChatArea({
 
   function handleChatScroll(event: UIEvent<HTMLDivElement>) {
     const isAtLatest = isScrolledToLatest(event.currentTarget)
+    setIsChatScrolled(event.currentTarget.scrollTop > 2)
     if (isProgrammaticScrollRef.current) {
       if (isAtLatest) {
         isProgrammaticScrollRef.current = false
@@ -918,10 +897,10 @@ export function ChatArea({
   return (
     <section
       className={cn(
-        "@container/chat ousia-main-panel ousia-squircle-corners relative z-20 flex min-w-0 shrink-0 flex-col overflow-hidden rounded-l-[var(--ousia-chat-panel-radius)] border-[0.5px] border-l-0 border-border/60 bg-[var(--ousia-chat-panel-bg)] shadow-[var(--ousia-chat-panel-shadow)]",
+        "@container/chat ousia-main-panel ousia-squircle-corners relative z-20 flex min-w-0 shrink-0 flex-col overflow-hidden rounded-l-[var(--ousia-chat-panel-radius)] rounded-tr-[var(--ousia-chat-panel-radius)] rounded-br-none border-[0.5px] border-border/60 bg-white shadow-[var(--ousia-chat-composer-shadow)] dark:bg-card",
         isTerminalPanelCollapsed
-          ? "rounded-r-[var(--ousia-chat-panel-radius)]"
-          : "rounded-r-none border-r-0"
+          ? "rounded-br-[var(--ousia-chat-panel-radius)]"
+          : "border-r-0"
       )}
       style={style}
       onKeyDownCapture={handleEscapeKey}
@@ -931,6 +910,7 @@ export function ChatArea({
         currentSession={currentSession}
         isSessionMenuOpen={isSessionMenuOpen}
         isSidebarCollapsed={isSidebarCollapsed}
+        isScrolled={isChatScrolled}
         isTerminalPanelCollapsed={isTerminalPanelCollapsed}
         isWindowFullscreen={isWindowFullscreen}
         onCopySessionHistory={() => void handleCopySessionHistory()}
@@ -948,7 +928,7 @@ export function ChatArea({
       <div
         ref={scrollRef}
         className={cn(
-          "ousia-hover-scrollbar ousia-stable-scrollbar-gutter min-h-0 flex-1 select-text overflow-auto bg-transparent pt-14 pb-16",
+          "ousia-hover-scrollbar ousia-stable-scrollbar-gutter min-h-0 flex-1 select-text overflow-auto bg-white pt-14 pb-16 dark:bg-card",
           CHAT_HORIZONTAL_PADDING_CLASS
         )}
         onScroll={handleChatScroll}
@@ -956,8 +936,6 @@ export function ChatArea({
         <ChatMessageList
           items={items}
           onBranchFromMessage={onBranchFromMessage}
-          projectPath={currentProject?.path}
-          sessionId={currentSession?.id}
           showTurnWaitIndicator={showTurnWaitIndicator}
           t={t}
         />
@@ -980,7 +958,7 @@ export function ChatArea({
 
       <form
         className={cn(
-          "shrink-0 bg-transparent pt-2 pb-4",
+          "shrink-0 bg-white pt-2 pb-4 dark:bg-card",
           CHAT_HORIZONTAL_PADDING_CLASS
         )}
         onSubmit={handleSubmit}
@@ -1004,7 +982,7 @@ export function ChatArea({
             ) : null}
             <div
               className={cn(
-                "ousia-chat-composer-ring ousia-squircle-corners relative z-10 rounded-[var(--ousia-chat-composer-radius)] border-[0.5px] border-foreground/10 bg-[var(--ousia-chat-composer-bg)] px-4 pt-2.5 pb-2.5 shadow-[var(--ousia-chat-composer-shadow)] transition-[border-color,box-shadow] focus-within:border-ring/30 focus-within:shadow-[var(--ousia-chat-composer-shadow-focus)] focus-within:ring-0 dark:border-white/10 dark:focus-within:border-white/20",
+                "ousia-chat-composer-ring ousia-squircle-corners relative z-10 rounded-[var(--ousia-chat-composer-radius)] border-[0.5px] border-foreground/10 bg-[var(--ousia-sidebar)] px-4 pt-3 pb-3 shadow-[var(--ousia-chat-composer-shadow)] transition-[border-color,box-shadow] focus-within:border-ring/30 focus-within:shadow-[var(--ousia-chat-composer-shadow-focus)] focus-within:ring-0 dark:border-white/10 dark:focus-within:border-white/20",
                 visibleQueuedMessages.length && "-mt-8"
               )}
             >
@@ -1030,7 +1008,6 @@ export function ChatArea({
               ref={inputRef}
               aria-label={t.chat.message}
               value={draft}
-              style={{ fontFamily: "var(--ousia-chat-font-family)" }}
               onChange={handleDraftChange}
               onPaste={handlePaste}
               onCompositionStart={() => {
@@ -1048,7 +1025,7 @@ export function ChatArea({
                   event.currentTarget.form?.requestSubmit()
                 }
               }}
-              className="ousia-hover-scrollbar min-h-10 rounded-none border-0 bg-transparent p-0 text-sm leading-6 placeholder:text-muted-foreground/55 [field-sizing:fixed] focus-visible:ring-0"
+              className="ousia-hover-scrollbar min-h-12 rounded-none border-0 bg-transparent p-0 text-sm leading-6 placeholder:text-muted-foreground/55 [field-sizing:fixed] focus-visible:ring-0"
               placeholder={
                 editingQueueId
                   ? t.chat.editQueuedMessage
@@ -1091,7 +1068,7 @@ export function ChatArea({
                     align="start"
                     className="ousia-hover-scrollbar w-72 rounded-xl p-2"
                   >
-                    <DropdownMenuLabel className="px-2 pt-1 pb-1 text-sm">
+                    <DropdownMenuLabel className="px-2 pt-1 pb-1 text-sm text-neutral-500">
                       {t.settings.agentMode}
                     </DropdownMenuLabel>
                     <DropdownMenuRadioGroup value={settings.agentMode}>
@@ -1124,7 +1101,7 @@ export function ChatArea({
                             <TooltipTrigger asChild>
                               <DropdownMenuRadioItem
                                 value={value}
-                                className="h-9 rounded-md px-2"
+                                className="h-9 rounded-md px-2 hover:bg-neutral-100 focus:bg-neutral-100"
                                 onClick={() => {
                                   updateComposerSettings({ agentMode: value })
                                   if (value === "custom") {
@@ -1147,13 +1124,13 @@ export function ChatArea({
                       </TooltipProvider>
                     </DropdownMenuRadioGroup>
                     <div className="h-2" />
-                    <DropdownMenuLabel className="px-2 pt-1 pb-1 text-sm">
+                    <DropdownMenuLabel className="px-2 pt-1 pb-1 text-sm text-neutral-500">
                       {t.chat.appendMessages}
                     </DropdownMenuLabel>
                     <DropdownMenuRadioGroup value={settings.sendDuringRunMode}>
                       <DropdownMenuRadioItem
                         value="queue"
-                        className="h-9 rounded-md px-2"
+                        className="h-9 rounded-md px-2 hover:bg-neutral-100 focus:bg-neutral-100"
                         onClick={() =>
                           updateComposerSettings({ sendDuringRunMode: "queue" })
                         }
@@ -1162,7 +1139,7 @@ export function ChatArea({
                       </DropdownMenuRadioItem>
                       <DropdownMenuRadioItem
                         value="steer"
-                        className="h-9 rounded-md px-2"
+                        className="h-9 rounded-md px-2 hover:bg-neutral-100 focus:bg-neutral-100"
                         onClick={() =>
                           updateComposerSettings({ sendDuringRunMode: "steer" })
                         }
@@ -1171,11 +1148,11 @@ export function ChatArea({
                       </DropdownMenuRadioItem>
                     </DropdownMenuRadioGroup>
                     <div className="h-2" />
-                    <DropdownMenuLabel className="px-2 pt-1 pb-1 text-sm">
+                    <DropdownMenuLabel className="px-2 pt-1 pb-1 text-sm text-neutral-500">
                       {t.chat.interruptBehavior}
                     </DropdownMenuLabel>
                     <DropdownMenuItem
-                      className="flex h-10 justify-between rounded-md px-2"
+                      className="flex h-10 justify-between rounded-md px-2 hover:bg-neutral-100 focus:bg-neutral-100"
                       onSelect={(event) => {
                         event.preventDefault()
                         updateComposerSettings({
@@ -1192,13 +1169,13 @@ export function ChatArea({
                         className={cn(
                           "relative ml-3 h-5 w-9 shrink-0 rounded-full transition-colors",
                           settings.continueQueuedMessagesAfterInterrupt
-                            ? "bg-primary"
-                            : "bg-muted"
+                            ? "bg-neutral-950"
+                            : "bg-neutral-200"
                         )}
                       >
                         <span
                           className={cn(
-                            "absolute top-0.5 size-4 rounded-full bg-background shadow-sm transition-[left]",
+                            "absolute top-0.5 size-4 rounded-full bg-white shadow-sm transition-[left]",
                             settings.continueQueuedMessagesAfterInterrupt
                               ? "left-[18px]"
                               : "left-0.5"
@@ -1207,11 +1184,11 @@ export function ChatArea({
                       </span>
                     </DropdownMenuItem>
                     <div className="h-2" />
-                    <DropdownMenuLabel className="px-2 pt-1 pb-1 text-sm">
+                    <DropdownMenuLabel className="px-2 pt-1 pb-1 text-sm text-neutral-500">
                       {t.chat.context}
                     </DropdownMenuLabel>
                     <DropdownMenuItem
-                      className="flex h-10 justify-between rounded-md px-2"
+                      className="flex h-10 justify-between rounded-md px-2 hover:bg-neutral-100 focus:bg-neutral-100"
                       onSelect={(event) => {
                         event.preventDefault()
                         updateComposerSettings({
@@ -1227,13 +1204,13 @@ export function ChatArea({
                         className={cn(
                           "relative ml-3 h-5 w-9 shrink-0 rounded-full transition-colors",
                           settings.showContextUsage
-                            ? "bg-primary"
-                            : "bg-muted"
+                            ? "bg-neutral-950"
+                            : "bg-neutral-200"
                         )}
                       >
                         <span
                           className={cn(
-                            "absolute top-0.5 size-4 rounded-full bg-background shadow-sm transition-[left]",
+                            "absolute top-0.5 size-4 rounded-full bg-white shadow-sm transition-[left]",
                             settings.showContextUsage ? "left-[18px]" : "left-0.5"
                           )}
                         />
@@ -1268,9 +1245,9 @@ export function ChatArea({
                     side="top"
                     sideOffset={8}
                     align="start"
-                    className="ousia-model-menu-scrollbar max-h-[min(520px,var(--radix-dropdown-menu-content-available-height))] w-72 rounded-xl p-2 pr-3"
+                    className="w-72 rounded-xl p-2"
                   >
-                    <DropdownMenuLabel className="px-2 pt-1 pb-1 text-sm">
+                    <DropdownMenuLabel className="px-2 pt-1 pb-1 text-sm text-neutral-500">
                       Reasoning
                     </DropdownMenuLabel>
                     <DropdownMenuRadioGroup value={selectedThinkingLevel}>
@@ -1278,7 +1255,7 @@ export function ChatArea({
                         <DropdownMenuRadioItem
                           key={level}
                           value={level}
-                          className="h-10 rounded-md px-2"
+                          className="h-10 rounded-md px-2 hover:bg-neutral-100 focus:bg-neutral-100"
                           onClick={() => updateThinkingLevel(level)}
                         >
                           <span className="min-w-0 flex-1 truncate">
@@ -1287,7 +1264,7 @@ export function ChatArea({
                         </DropdownMenuRadioItem>
                       ))}
                     </DropdownMenuRadioGroup>
-                    <DropdownMenuSeparator className="my-2" />
+                    <DropdownMenuSeparator className="my-2 bg-neutral-200" />
                     <DropdownMenuRadioGroup
                       value={
                         selectedModelPreset
@@ -1308,7 +1285,7 @@ export function ChatArea({
                           <DropdownMenuRadioItem
                             key={value}
                             value={value}
-                            className="h-10 rounded-md px-2"
+                            className="h-10 rounded-md px-2 hover:bg-neutral-100 focus:bg-neutral-100"
                             onClick={() => updateModel(preset)}
                           >
                             <span className="min-w-0 flex-1 truncate">
@@ -1377,10 +1354,10 @@ export function ChatArea({
         open={isCustomToolsDialogOpen}
         onOpenChange={setIsCustomToolsDialogOpen}
       >
-        <DialogContent className="max-w-sm rounded-3xl">
+        <DialogContent className="max-w-sm rounded-3xl bg-white text-neutral-950 dark:bg-white dark:text-neutral-950">
           <DialogHeader>
             <DialogTitle className="text-xl">{t.chat.customTools}</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-neutral-500">
               {t.chat.customToolsDescription}
             </DialogDescription>
           </DialogHeader>
@@ -1391,7 +1368,7 @@ export function ChatArea({
                 <button
                   key={tool}
                   type="button"
-                  className="flex h-11 items-center justify-between rounded-xl px-3 text-left text-sm hover:bg-muted/55 focus-visible:bg-muted/55 focus-visible:outline-none"
+                  className="flex h-11 items-center justify-between rounded-xl px-3 text-left text-sm hover:bg-neutral-100 focus-visible:bg-neutral-100 focus-visible:outline-none"
                   onClick={() => toggleCustomAgentTool(tool)}
                 >
                   <span>{t.chat.agentToolNames[tool]}</span>
@@ -1399,12 +1376,12 @@ export function ChatArea({
                     aria-hidden="true"
                     className={cn(
                       "relative ml-3 h-5 w-9 shrink-0 rounded-full transition-colors",
-                      isEnabled ? "bg-primary" : "bg-muted"
+                      isEnabled ? "bg-neutral-950" : "bg-neutral-200"
                     )}
                   >
                     <span
                       className={cn(
-                        "absolute top-0.5 size-4 rounded-full bg-background shadow-sm transition-[left]",
+                        "absolute top-0.5 size-4 rounded-full bg-white shadow-sm transition-[left]",
                         isEnabled ? "left-[18px]" : "left-0.5"
                       )}
                     />
