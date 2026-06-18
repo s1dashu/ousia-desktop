@@ -153,6 +153,11 @@ type ChatAreaProps = {
   onGenerateSessionTitle: (sessionId: string, firstPrompt: string) => void
   onBranchFromMessage: (messageId: string) => void
   onLoadOlderHistory: () => Promise<void> | void
+  onSessionCompletionVisibility: (
+    sessionId: string,
+    isFullyVisible: boolean
+  ) => void
+  onSessionViewed: (sessionId: string) => void
   onSettingsChange: (settings: AppSettings) => void
   queuedChatState: {
     steering: string[]
@@ -219,6 +224,8 @@ export function ChatArea({
   onGenerateSessionTitle,
   onBranchFromMessage,
   onLoadOlderHistory,
+  onSessionCompletionVisibility,
+  onSessionViewed,
   onSettingsChange,
   queuedChatState,
   settings,
@@ -269,6 +276,10 @@ export function ChatArea({
   const manualScrollIntentRef = useRef(false)
   const programmaticScrollResetFrameRef = useRef(0)
   const programmaticScrollResetTimerRef = useRef(0)
+  const completionVisibilityFrameRef = useRef(0)
+  const pendingCompletionVisibilitySessionIdRef = useRef<string | null>(null)
+  const latestFinishedAssistantIdBeforeRunRef = useRef<string | null>(null)
+  const wasAgentWorkingForVisibilityRef = useRef(false)
   const olderHistoryScrollAnchorRef = useRef<{
     height: number
     top: number
@@ -361,9 +372,51 @@ export function ChatArea({
     : piQueuedMessages
   const isPiQueueVisible = !queuedMessages.length && piQueuedMessages.length > 0
 
+  const markCurrentSessionViewed = useCallback(() => {
+    if (currentSession) {
+      onSessionViewed(currentSession.id)
+    }
+  }, [currentSession, onSessionViewed])
+
   function isScrolledToLatest(node: HTMLDivElement) {
     return node.scrollHeight - node.scrollTop - node.clientHeight < 24
   }
+
+  function isLatestAssistantMessageFullyVisible() {
+    const node = scrollRef.current
+    if (!node) {
+      return true
+    }
+    const assistantMessages = node.querySelectorAll<HTMLElement>(
+      '[data-chat-message-role="assistant"]'
+    )
+    const latestAssistantMessage = assistantMessages.item(
+      assistantMessages.length - 1
+    )
+    if (!latestAssistantMessage) {
+      return true
+    }
+    const viewportRect = node.getBoundingClientRect()
+    const messageRect = latestAssistantMessage.getBoundingClientRect()
+    const visibilityTolerance = 1
+    return (
+      messageRect.top >= viewportRect.top - visibilityTolerance &&
+      messageRect.bottom <= viewportRect.bottom + visibilityTolerance
+    )
+  }
+
+  const latestAssistantItem = useCallback(() => {
+    return [...items].reverse().find((item) => item.role === "assistant")
+  }, [items])
+
+  const latestFinishedAssistantId = useCallback(() => {
+    return (
+      [...items]
+        .reverse()
+        .find((item) => item.role === "assistant" && item.status === "finished")
+        ?.id ?? null
+    )
+  }, [items])
 
   const clearProgrammaticScrollReset = useCallback(() => {
     if (programmaticScrollResetFrameRef.current) {
@@ -478,8 +531,74 @@ export function ChatArea({
     return () => {
       clearProgrammaticScrollReset()
       clearManualScrollIntent()
+      if (completionVisibilityFrameRef.current) {
+        window.cancelAnimationFrame(completionVisibilityFrameRef.current)
+      }
     }
   }, [clearManualScrollIntent, clearProgrammaticScrollReset])
+
+  useLayoutEffect(() => {
+    if (isAgentWorking) {
+      if (!wasAgentWorkingForVisibilityRef.current) {
+        latestFinishedAssistantIdBeforeRunRef.current = latestFinishedAssistantId()
+      }
+      wasAgentWorkingForVisibilityRef.current = true
+      pendingCompletionVisibilitySessionIdRef.current = null
+      return
+    }
+    if (!wasAgentWorkingForVisibilityRef.current) {
+      return
+    }
+    wasAgentWorkingForVisibilityRef.current = false
+    pendingCompletionVisibilitySessionIdRef.current = currentSession?.id ?? null
+  }, [currentSession?.id, isAgentWorking, items, latestFinishedAssistantId])
+
+  useLayoutEffect(() => {
+    const pendingSessionId = pendingCompletionVisibilitySessionIdRef.current
+    if (
+      !pendingSessionId ||
+      pendingSessionId !== currentSession?.id ||
+      isAgentWorking
+    ) {
+      return
+    }
+    const latestAssistant = latestAssistantItem()
+    if (
+      !latestAssistant ||
+      latestAssistant.status !== "finished" ||
+      latestAssistant.id === latestFinishedAssistantIdBeforeRunRef.current
+    ) {
+      return
+    }
+    window.cancelAnimationFrame(completionVisibilityFrameRef.current)
+    completionVisibilityFrameRef.current = window.requestAnimationFrame(() => {
+      completionVisibilityFrameRef.current = window.requestAnimationFrame(() => {
+        completionVisibilityFrameRef.current = 0
+        if (
+          pendingCompletionVisibilitySessionIdRef.current !== pendingSessionId
+        ) {
+          return
+        }
+        pendingCompletionVisibilitySessionIdRef.current = null
+        onSessionCompletionVisibility(
+          pendingSessionId,
+          isLatestAssistantMessageFullyVisible()
+        )
+      })
+    })
+    return () => {
+      if (completionVisibilityFrameRef.current) {
+        window.cancelAnimationFrame(completionVisibilityFrameRef.current)
+        completionVisibilityFrameRef.current = 0
+      }
+    }
+  }, [
+    currentSession?.id,
+    isAgentWorking,
+    items,
+    latestAssistantItem,
+    onSessionCompletionVisibility,
+  ])
 
   useLayoutEffect(() => {
     if (!isFollowingLatest) {
@@ -702,10 +821,17 @@ export function ChatArea({
   }
 
   function handleWheelCapture(event: WheelEvent<HTMLDivElement>) {
+    markCurrentSessionViewed()
     handleManualScrollIntent(event.deltaY < 0)
   }
 
+  function handleChatKeyDownCapture(event: KeyboardEvent) {
+    markCurrentSessionViewed()
+    handleEscapeKey(event)
+  }
+
   function handleScrollPointerDown(event: PointerEvent<HTMLDivElement>) {
+    markCurrentSessionViewed()
     const rect = event.currentTarget.getBoundingClientRect()
     const scrollbarHitSize = 18
     const isLikelyScrollbarPointer =
@@ -1357,6 +1483,7 @@ export function ChatArea({
   }
 
   function handlePaste(event: ClipboardEvent<HTMLTextAreaElement>) {
+    markCurrentSessionViewed()
     const files = filesFromDataTransfer(event.clipboardData)
     if (files.length) {
       event.preventDefault()
@@ -1384,6 +1511,7 @@ export function ChatArea({
   }
 
   function handleDraftChange(event: ChangeEvent<HTMLTextAreaElement>) {
+    markCurrentSessionViewed()
     inputScrollTopBeforeResizeRef.current = event.currentTarget.scrollTop
     setDraft(event.currentTarget.value)
   }
@@ -1442,7 +1570,8 @@ export function ChatArea({
         "@container/chat ousia-main-panel ousia-squircle-corners relative z-20 flex min-w-0 shrink-0 flex-col overflow-hidden rounded-l-[var(--ousia-chat-panel-radius)] rounded-r-[var(--ousia-chat-panel-radius)] border-[0.5px] border-border/60 bg-white shadow-[var(--ousia-main-panel-shadow)] dark:bg-card"
       )}
       style={style}
-      onKeyDownCapture={handleEscapeKey}
+      onKeyDownCapture={handleChatKeyDownCapture}
+      onPointerDownCapture={markCurrentSessionViewed}
     >
       <ChatHeader
         copyStatus={copyStatus}
@@ -1472,7 +1601,10 @@ export function ChatArea({
         )}
         onScroll={handleChatScroll}
         onWheelCapture={handleWheelCapture}
-        onTouchStartCapture={() => handleManualScrollIntent()}
+        onTouchStartCapture={() => {
+          markCurrentSessionViewed()
+          handleManualScrollIntent()
+        }}
         onPointerDownCapture={handleScrollPointerDown}
       >
         <div ref={chatContentRef}>
@@ -1504,7 +1636,10 @@ export function ChatArea({
             size="icon-sm"
             className="pointer-events-auto absolute bottom-3 left-1/2 size-6 -translate-x-1/2 rounded-full border-[0.5px] border-foreground/10 bg-popover/90 text-popover-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.72),inset_0_0_0_1px_rgba(255,255,255,0.22),0_4px_14px_rgba(0,0,0,0.045),0_1px_5px_rgba(0,0,0,0.025)] backdrop-blur hover:bg-popover/95 dark:border-foreground/10 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06),inset_0_0_0_1px_rgba(255,255,255,0.04),0_4px_14px_rgba(0,0,0,0.22),0_1px_5px_rgba(0,0,0,0.12)]"
             aria-label={t.chat.scrollToLatest}
-            onClick={() => scrollToLatest("smooth")}
+            onClick={() => {
+              markCurrentSessionViewed()
+              scrollToLatest("smooth")
+            }}
           >
             <ArrowDown className="size-[18px]" strokeWidth={1.5} />
           </Button>

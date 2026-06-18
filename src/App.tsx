@@ -383,6 +383,35 @@ export function App() {
     () => unreadCompletedSessionIds,
     [unreadCompletedSessionIds]
   )
+  const markSessionViewed = useCallback((sessionId: string) => {
+    if (!sessionId) {
+      return
+    }
+    setUnreadCompletedSessionIds((current) => {
+      if (!current.has(sessionId)) {
+        return current
+      }
+      const next = new Set(current)
+      next.delete(sessionId)
+      return next
+    })
+  }, [])
+  const markSessionCompletionVisibility = useCallback(
+    (sessionId: string, isFullyVisible: boolean) => {
+      if (!sessionId || isFullyVisible) {
+        return
+      }
+      setUnreadCompletedSessionIds((current) => {
+        if (current.has(sessionId)) {
+          return current
+        }
+        const next = new Set(current)
+        next.add(sessionId)
+        return next
+      })
+    },
+    []
+  )
   const createAppStateSnapshot = useCallback(
     (nextSettings: AppSettings = settings): InitialAppState => ({
       schemaVersion: APP_STATE_SCHEMA_VERSION,
@@ -781,10 +810,10 @@ export function App() {
           nextStatus === "idle" &&
           (event.status === "finished" || event.status === "error")
         ) {
-          const isViewed =
+          const canMeasureSelectedSession =
             selectedSessionIdRef.current === targetSession.id &&
             !isSettingsOpenRef.current
-          if (!isViewed) {
+          if (!canMeasureSelectedSession) {
             setUnreadCompletedSessionIds((current) => {
               if (current.has(targetSession.id)) {
                 return current
@@ -899,13 +928,18 @@ export function App() {
       })
     }
     if (event.type === "run_status") {
+      const nextStatus =
+        event.status === "starting" || event.status === "running"
+          ? "working"
+          : "idle"
       setRunStatusBySession((current) => ({
         ...current,
-        [selectedChatKey]:
-          event.status === "starting" || event.status === "running"
-            ? "working"
-            : "idle",
+        [selectedChatKey]: nextStatus,
       }))
+      runStatusBySessionRef.current = {
+        ...runStatusBySessionRef.current,
+        [selectedChatKey]: nextStatus,
+      }
     }
     if (event.type === "queue_update") {
       setQueuedChatStateBySession((current) => ({
@@ -1162,14 +1196,6 @@ export function App() {
 
   function handleSelectSession(sessionId: string) {
     setSelectedSessionId(sessionId)
-    setUnreadCompletedSessionIds((current) => {
-      if (!current.has(sessionId)) {
-        return current
-      }
-      const next = new Set(current)
-      next.delete(sessionId)
-      return next
-    })
     setIsSettingsOpen(false)
   }
 
@@ -1576,6 +1602,8 @@ export function App() {
               onGenerateSessionTitle={handleGenerateSessionTitle}
               onBranchFromMessage={handleBranchFromMessage}
               onLoadOlderHistory={handleLoadOlderHistory}
+              onSessionCompletionVisibility={markSessionCompletionVisibility}
+              onSessionViewed={markSessionViewed}
               hasMoreHistory={Boolean(selectedHistoryPageState?.hasMore)}
               isLoadingHistory={
                 selectedHistoryPageState?.status === "loading-initial"

@@ -162,6 +162,45 @@ function previewText(value: string, maxLength = 180) {
   return `${normalized.slice(0, maxLength).trimEnd()}...`
 }
 
+function previewToolInput(value: string) {
+  const fallback = previewText(value || "{}")
+  if (!value) {
+    return fallback
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return fallback
+    }
+
+    const record = parsed as Record<string, unknown>
+    const summary: Record<string, string> = {}
+    for (const key of [
+      "path",
+      "filePath",
+      "file_path",
+      "target",
+      "cwd",
+      "command",
+      "cmd",
+      "shell",
+      "pattern",
+      "query",
+      "search",
+    ]) {
+      const field = record[key]
+      if (typeof field === "string" && field.trim()) {
+        summary[key] = previewText(field)
+      }
+    }
+
+    return Object.keys(summary).length ? JSON.stringify(summary) : fallback
+  } catch {
+    return fallback
+  }
+}
+
 function escapeHtml(value: string) {
   return value
     .replaceAll("&", "&amp;")
@@ -545,6 +584,7 @@ function messageEntryToHistoryItems(
         }
       } else if (block.type === "toolCall") {
         const input = stringifyUnknown(block.arguments) ?? ""
+        const inputPreview = previewToolInput(input)
         items.push({
           id:
             typeof block.id === "string"
@@ -552,8 +592,8 @@ function messageEntryToHistoryItems(
               : `${entry.id}-tool-${index}`,
           role: "tool",
           name: typeof block.name === "string" ? block.name : "tool",
-          text: options.includeToolPayloads ? input : previewText(input || "{}"),
-          input: options.includeToolPayloads ? input : undefined,
+          text: options.includeToolPayloads ? input : inputPreview,
+          input: options.includeToolPayloads ? input : inputPreview,
           payloadOmitted: options.includeToolPayloads ? undefined : true,
           status: orphanedToolStatus,
         })
@@ -582,10 +622,7 @@ function messageEntryToHistoryItems(
           ? existing.name
           : "tool",
       text: options.includeToolPayloads ? text : previewText(text),
-      input:
-        options.includeToolPayloads && existing?.role === "tool"
-          ? existing.input
-          : undefined,
+      input: existing?.role === "tool" ? existing.input : undefined,
       output:
         options.includeToolPayloads && !message.isError ? resultText : undefined,
       errorText:
@@ -609,7 +646,11 @@ function messageEntryToHistoryItems(
       role: "tool",
       name: "bash",
       text: options.includeToolPayloads ? text : previewText(text),
-      input: options.includeToolPayloads ? command : undefined,
+      input: command
+        ? options.includeToolPayloads
+          ? command
+          : previewText(command)
+        : undefined,
       output: options.includeToolPayloads ? output : undefined,
       errorText:
         options.includeToolPayloads && message.exitCode !== 0 ? output : undefined,
