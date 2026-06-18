@@ -66,12 +66,37 @@ type SettingsPageProps = {
 }
 
 const settingsContentClass =
-  "mx-auto grid w-full max-w-[var(--ousia-settings-content-max-width)] gap-8"
-const settingsSectionClass = "grid gap-4"
+  "mx-auto grid w-full max-w-[var(--ousia-settings-content-max-width)] gap-10"
+const settingsSectionClass =
+  "grid gap-5 border-t border-border/55 pt-6 first:border-t-0 first:pt-0"
+const settingsSectionHeaderClass = "grid gap-1"
+const settingsSectionTitleClass =
+  "text-lg leading-7 font-medium tracking-tight"
+const settingsSectionDescriptionClass =
+  "max-w-2xl text-sm leading-6 text-muted-foreground"
+const settingsFieldListClass = "grid gap-6"
 const settingsFieldClass = "grid gap-2"
-const settingsLabelClass = "text-xs font-medium text-muted-foreground"
-const settingsHelpClass = "text-xs leading-5 text-muted-foreground"
-const settingsControlClass = "ousia-squircle-corners w-full rounded-xl"
+const settingsLabelClass = "text-sm leading-none font-medium text-foreground"
+const settingsHelpClass = "text-sm leading-6 text-muted-foreground"
+const settingsControlClass =
+  "ousia-squircle-corners h-9 w-full rounded-xl border-[0.5px] border-foreground/10 bg-input/30"
+const settingsIconButtonClass =
+  "ousia-squircle-corners rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground active:scale-[0.96]"
+
+function SettingsSectionHeader({
+  description,
+  title,
+}: {
+  description: string
+  title: string
+}) {
+  return (
+    <div className={settingsSectionHeaderClass}>
+      <h2 className={settingsSectionTitleClass}>{title}</h2>
+      <p className={settingsSectionDescriptionClass}>{description}</p>
+    </div>
+  )
+}
 
 export function SettingsPage({
   isSidebarCollapsed,
@@ -389,304 +414,328 @@ export function SettingsPage({
       <div className="ousia-hover-scrollbar min-h-0 flex-1 overflow-auto px-[var(--ousia-settings-gutter)] py-8">
         <div className={settingsContentClass}>
           <section className={settingsSectionClass}>
-            <h2 className="text-sm font-semibold">{t.settings.general}</h2>
-            <div className={settingsFieldClass}>
-              <span className={settingsLabelClass}>
-                {t.settings.language}
-              </span>
-              <Select
-                items={languageOptions}
-                value={draft.language}
-                onValueChange={(value) =>
-                  applySettings({ language: value as OusiaLanguage })
-                }
-              >
-                <SelectTrigger
-                  aria-label={t.settings.language}
-                  className={settingsControlClass}
+            <SettingsSectionHeader
+              title={t.settings.general}
+              description={t.settings.generalDescription}
+            />
+            <div className={settingsFieldListClass}>
+              <div className={settingsFieldClass}>
+                <span className={settingsLabelClass}>
+                  {t.settings.language}
+                </span>
+                <Select
+                  items={languageOptions}
+                  value={draft.language}
+                  onValueChange={(value) =>
+                    applySettings({ language: value as OusiaLanguage })
+                  }
                 >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent align="start">
-                  <SelectGroup>
-                    {languageOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-          </section>
-
-          <section className={settingsSectionClass}>
-            <h2 className="text-sm font-semibold">{t.settings.appearance}</h2>
-            <div className={settingsFieldClass}>
-              <span className={settingsLabelClass}>
-                {t.settings.appearanceMode}
-              </span>
-              <Select
-                items={themeOptions}
-                value={draft.theme}
-                onValueChange={(value) => applyThemeSetting(value as Theme)}
-              >
-                <SelectTrigger
-                  aria-label={t.settings.appearanceMode}
-                  className={settingsControlClass}
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent align="start">
-                  <SelectGroup>
-                    {themeOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className={settingsFieldClass}>
-              <span className={settingsLabelClass}>
-                {t.settings.appFontFamily}
-              </span>
-              <Select
-                items={fontFamilyOptions}
-                value={draft.appFontFamily}
-                onValueChange={(value) =>
-                  applySettings({
-                    appFontFamily: value as OusiaFontFamily,
-                  })
-                }
-              >
-                <SelectTrigger
-                  aria-label={t.settings.appFontFamily}
-                  className={settingsControlClass}
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent align="start">
-                  <SelectGroup>
-                    {fontFamilyOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-              {draft.appFontFamily === "microsoftYaHei" ? (
-                <div className={settingsHelpClass}>
-                  {t.settings.fontFamilyHelp}
-                </div>
-              ) : null}
-            </div>
-
-            <div className={settingsFieldClass}>
-              <span className={settingsLabelClass}>
-                {t.settings.chatFontFamily}
-              </span>
-              <Select
-                items={fontFamilyOptions}
-                value={draft.chatFontFamily}
-                onValueChange={(value) =>
-                  applySettings({
-                    chatFontFamily: value as OusiaFontFamily,
-                  })
-                }
-              >
-                <SelectTrigger
-                  aria-label={t.settings.chatFontFamily}
-                  className={settingsControlClass}
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent align="start">
-                  <SelectGroup>
-                    {fontFamilyOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-              {draft.chatFontFamily === "microsoftYaHei" ? (
-                <div className={settingsHelpClass}>
-                  {t.settings.fontFamilyHelp}
-                </div>
-              ) : null}
-            </div>
-
-            <div className={settingsFieldClass}>
-              <span className={settingsLabelClass}>
-                {t.settings.colorScale}
-              </span>
-              <Select
-                items={appearanceColorScales}
-                value={draft.appearanceColorScale}
-                onValueChange={(value) =>
-                  applySettings({
-                    appearanceColorScale: value as OusiaAppearanceColorScale,
-                  })
-                }
-              >
-                <SelectTrigger
-                  aria-label={t.settings.colorScale}
-                  className={settingsControlClass}
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent align="start">
-                  <SelectGroup>
-                    {appearanceColorScales.map((scale) => (
-                      <SelectItem key={scale.value} value={scale.value}>
-                        {scale.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-            {selectedColorScaleDescription ? (
-              <div className={settingsHelpClass}>
-                {selectedColorScaleDescription}
-              </div>
-            ) : null}
-          </section>
-
-          <section className={settingsSectionClass}>
-            <h2 className="text-sm font-semibold">{t.settings.agent}</h2>
-            <div className={settingsFieldClass}>
-              <span className={settingsLabelClass}>
-                {t.settings.agentMode}
-              </span>
-              <Select
-                items={agentModeOptions}
-                value={draft.agentMode}
-                onValueChange={(value) =>
-                  applySettings({ agentMode: value as OusiaAgentMode })
-                }
-              >
-                <SelectTrigger
-                  aria-label={t.settings.agentMode}
-                  className={settingsControlClass}
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent align="start">
-                  <SelectGroup>
-                    {agentModeOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-              <div className={settingsHelpClass}>
-                {
-                  agentModeOptions.find(
-                    (option) => option.value === draft.agentMode
-                  )?.description
-                }
+                  <SelectTrigger
+                    aria-label={t.settings.language}
+                    className={settingsControlClass}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="start">
+                    <SelectGroup>
+                      {languageOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-            <div className={settingsFieldClass}>
-              <span className={settingsLabelClass}>
-                {t.settings.appendMessages}
-              </span>
-              <Select
-                items={sendDuringRunModeOptions}
-                value={draft.sendDuringRunMode}
-                onValueChange={(value) =>
-                  applySettings({
-                    sendDuringRunMode: value as OusiaSendDuringRunMode,
-                  })
-                }
-              >
-                <SelectTrigger
-                  aria-label={t.settings.appendMessages}
-                  className={settingsControlClass}
+          </section>
+
+          <section className={settingsSectionClass}>
+            <SettingsSectionHeader
+              title={t.settings.appearance}
+              description={t.settings.appearanceDescription}
+            />
+            <div className={settingsFieldListClass}>
+              <div className={settingsFieldClass}>
+                <span className={settingsLabelClass}>
+                  {t.settings.appearanceMode}
+                </span>
+                <Select
+                  items={themeOptions}
+                  value={draft.theme}
+                  onValueChange={(value) => applyThemeSetting(value as Theme)}
                 >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent align="start">
-                  <SelectGroup>
-                    {sendDuringRunModeOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className={settingsLabelClass}>
-                {t.settings.showContextUsage}
-              </span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={draft.showContextUsage}
-                className={cn(
-                  "relative h-5 w-9 shrink-0 rounded-full transition-colors",
-                  draft.showContextUsage ? "bg-foreground" : "bg-muted"
-                )}
-                onClick={() =>
-                  applySettings({ showContextUsage: !draft.showContextUsage })
-                }
-              >
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "absolute top-0.5 size-4 rounded-full bg-background shadow-sm transition-[left]",
-                    draft.showContextUsage ? "left-[18px]" : "left-0.5"
-                  )}
-                />
-              </button>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className={settingsLabelClass}>
-                {t.settings.continueQueuedAfterInterrupt}
-              </span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={draft.continueQueuedMessagesAfterInterrupt}
-                className={cn(
-                  "relative h-5 w-9 shrink-0 rounded-full transition-colors",
-                  draft.continueQueuedMessagesAfterInterrupt
-                    ? "bg-foreground"
-                    : "bg-muted"
-                )}
-                onClick={() =>
-                  applySettings({
-                    continueQueuedMessagesAfterInterrupt:
-                      !draft.continueQueuedMessagesAfterInterrupt,
-                  })
-                }
-              >
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "absolute top-0.5 size-4 rounded-full bg-background shadow-sm transition-[left]",
-                    draft.continueQueuedMessagesAfterInterrupt
-                      ? "left-[18px]"
-                      : "left-0.5"
-                  )}
-                />
-              </button>
+                  <SelectTrigger
+                    aria-label={t.settings.appearanceMode}
+                    className={settingsControlClass}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="start">
+                    <SelectGroup>
+                      {themeOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className={settingsFieldClass}>
+                <span className={settingsLabelClass}>
+                  {t.settings.appFontFamily}
+                </span>
+                <Select
+                  items={fontFamilyOptions}
+                  value={draft.appFontFamily}
+                  onValueChange={(value) =>
+                    applySettings({
+                      appFontFamily: value as OusiaFontFamily,
+                    })
+                  }
+                >
+                  <SelectTrigger
+                    aria-label={t.settings.appFontFamily}
+                    className={settingsControlClass}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="start">
+                    <SelectGroup>
+                      {fontFamilyOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                {draft.appFontFamily === "microsoftYaHei" ? (
+                  <div className={settingsHelpClass}>
+                    {t.settings.fontFamilyHelp}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className={settingsFieldClass}>
+                <span className={settingsLabelClass}>
+                  {t.settings.chatFontFamily}
+                </span>
+                <Select
+                  items={fontFamilyOptions}
+                  value={draft.chatFontFamily}
+                  onValueChange={(value) =>
+                    applySettings({
+                      chatFontFamily: value as OusiaFontFamily,
+                    })
+                  }
+                >
+                  <SelectTrigger
+                    aria-label={t.settings.chatFontFamily}
+                    className={settingsControlClass}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="start">
+                    <SelectGroup>
+                      {fontFamilyOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                {draft.chatFontFamily === "microsoftYaHei" ? (
+                  <div className={settingsHelpClass}>
+                    {t.settings.fontFamilyHelp}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className={settingsFieldClass}>
+                <span className={settingsLabelClass}>
+                  {t.settings.colorScale}
+                </span>
+                <Select
+                  items={appearanceColorScales}
+                  value={draft.appearanceColorScale}
+                  onValueChange={(value) =>
+                    applySettings({
+                      appearanceColorScale: value as OusiaAppearanceColorScale,
+                    })
+                  }
+                >
+                  <SelectTrigger
+                    aria-label={t.settings.colorScale}
+                    className={settingsControlClass}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="start">
+                    <SelectGroup>
+                      {appearanceColorScales.map((scale) => (
+                        <SelectItem key={scale.value} value={scale.value}>
+                          {scale.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                {selectedColorScaleDescription ? (
+                  <div className={settingsHelpClass}>
+                    {selectedColorScaleDescription}
+                  </div>
+                ) : null}
+              </div>
             </div>
           </section>
 
           <section className={settingsSectionClass}>
-            <h2 className="text-sm font-semibold">{t.settings.model}</h2>
-            <div className="grid gap-3">
+            <SettingsSectionHeader
+              title={t.settings.agent}
+              description={t.settings.agentDescription}
+            />
+            <div className={settingsFieldListClass}>
+              <div className={settingsFieldClass}>
+                <span className={settingsLabelClass}>
+                  {t.settings.agentMode}
+                </span>
+                <Select
+                  items={agentModeOptions}
+                  value={draft.agentMode}
+                  onValueChange={(value) =>
+                    applySettings({ agentMode: value as OusiaAgentMode })
+                  }
+                >
+                  <SelectTrigger
+                    aria-label={t.settings.agentMode}
+                    className={settingsControlClass}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="start">
+                    <SelectGroup>
+                      {agentModeOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <div className={settingsHelpClass}>
+                  {
+                    agentModeOptions.find(
+                      (option) => option.value === draft.agentMode
+                    )?.description
+                  }
+                </div>
+              </div>
+
+              <div className={settingsFieldClass}>
+                <span className={settingsLabelClass}>
+                  {t.settings.appendMessages}
+                </span>
+                <Select
+                  items={sendDuringRunModeOptions}
+                  value={draft.sendDuringRunMode}
+                  onValueChange={(value) =>
+                    applySettings({
+                      sendDuringRunMode: value as OusiaSendDuringRunMode,
+                    })
+                  }
+                >
+                  <SelectTrigger
+                    aria-label={t.settings.appendMessages}
+                    className={settingsControlClass}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="start">
+                    <SelectGroup>
+                      {sendDuringRunModeOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-2">
+                <div className="flex min-h-12 items-center justify-between gap-4 rounded-lg border border-border/60 bg-background/35 px-3 py-2">
+                  <span className={settingsLabelClass}>
+                    {t.settings.showContextUsage}
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={draft.showContextUsage}
+                    className={cn(
+                      "relative h-5 w-9 shrink-0 rounded-full transition-colors",
+                      draft.showContextUsage ? "bg-foreground" : "bg-muted"
+                    )}
+                    onClick={() =>
+                      applySettings({
+                        showContextUsage: !draft.showContextUsage,
+                      })
+                    }
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "absolute top-0.5 size-4 rounded-full bg-background shadow-sm transition-[left]",
+                        draft.showContextUsage ? "left-[18px]" : "left-0.5"
+                      )}
+                    />
+                  </button>
+                </div>
+                <div className="flex min-h-12 items-center justify-between gap-4 rounded-lg border border-border/60 bg-background/35 px-3 py-2">
+                  <span className={settingsLabelClass}>
+                    {t.settings.continueQueuedAfterInterrupt}
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={draft.continueQueuedMessagesAfterInterrupt}
+                    className={cn(
+                      "relative h-5 w-9 shrink-0 rounded-full transition-colors",
+                      draft.continueQueuedMessagesAfterInterrupt
+                        ? "bg-foreground"
+                        : "bg-muted"
+                    )}
+                    onClick={() =>
+                      applySettings({
+                        continueQueuedMessagesAfterInterrupt:
+                          !draft.continueQueuedMessagesAfterInterrupt,
+                      })
+                    }
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "absolute top-0.5 size-4 rounded-full bg-background shadow-sm transition-[left]",
+                        draft.continueQueuedMessagesAfterInterrupt
+                          ? "left-[18px]"
+                          : "left-0.5"
+                      )}
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className={settingsSectionClass}>
+            <SettingsSectionHeader
+              title={t.settings.model}
+              description={t.settings.modelDescription}
+            />
+            <div className={settingsFieldListClass}>
               <div className="flex items-center justify-between gap-3">
                 <span className={settingsLabelClass}>
                   {t.settings.providerKeys}
@@ -703,7 +752,7 @@ export function SettingsPage({
                   {t.app.add}
                 </Button>
               </div>
-              <div className="-mx-1 grid min-w-0 gap-2 px-1 py-1">
+              <div className="grid min-w-0 gap-2">
                 {draft.modelProviders.map((provider) => {
                   const providerHasApiKey = Boolean(provider.apiKey.trim())
                   const isProviderApiKeyVisible =
@@ -714,17 +763,17 @@ export function SettingsPage({
                   return (
                     <div
                       key={provider.id}
-                      className="grid min-w-0 grid-cols-[minmax(0,1fr)_40px] items-center gap-x-4 gap-y-2 py-1 @min-[560px]:grid-cols-[minmax(0,176px)_minmax(0,1fr)_40px]"
+                      className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 rounded-lg border border-border/60 bg-background/35 p-3 @min-[640px]:grid-cols-[minmax(0,160px)_minmax(0,1fr)_auto]"
                     >
-                      <div className="flex min-h-10 min-w-0 items-center text-sm font-medium text-foreground/75">
+                      <div className="flex min-h-9 min-w-0 items-center text-sm font-medium text-foreground">
                         <span className="block truncate">
                           {providerLabel(modelRegistry, provider.id)}
                         </span>
                       </div>
-                      <div className="relative min-w-0 @max-[559px]:col-span-1">
+                      <div className="relative min-w-0 @max-[639px]:col-span-1">
                         <Input
                           aria-label={`${provider.id} API Key`}
-                          className="ousia-squircle-corners min-w-0 rounded-xl border-[0.5px] border-foreground/10 bg-background/85 pr-10 shadow-[inset_0_1px_0_rgba(255,255,255,0.24)] focus-visible:bg-background disabled:opacity-100 dark:bg-input/45 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] dark:focus-visible:bg-input/60"
+                          className="ousia-squircle-corners min-w-0 rounded-xl border-[0.5px] border-foreground/10 bg-input/30 pr-10 disabled:cursor-default disabled:bg-input/20 disabled:text-muted-foreground disabled:opacity-100"
                           disabled={
                             !providerHasApiKey && !isEditingEnvironmentProvider
                           }
@@ -766,7 +815,7 @@ export function SettingsPage({
                           type={
                             providerHasApiKey && isProviderApiKeyVisible
                               ? "text"
-                            : "password"
+                              : "password"
                           }
                         />
                         {providerHasApiKey ? (
@@ -774,7 +823,10 @@ export function SettingsPage({
                             type="button"
                             variant="ghost"
                             size="icon-sm"
-                            className="ousia-squircle-corners absolute top-1/2 right-1 size-7 -translate-y-1/2 rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground active:scale-[0.96]"
+                            className={cn(
+                              "absolute top-1/2 right-1 size-7 -translate-y-1/2",
+                              settingsIconButtonClass
+                            )}
                             aria-label={
                               isProviderApiKeyVisible
                                 ? t.settings.hideApiKey
@@ -795,7 +847,10 @@ export function SettingsPage({
                             type="button"
                             variant="ghost"
                             size="icon-sm"
-                            className="ousia-squircle-corners absolute top-1/2 right-1 size-7 -translate-y-1/2 rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground active:scale-[0.96]"
+                            className={cn(
+                              "absolute top-1/2 right-1 size-7 -translate-y-1/2",
+                              settingsIconButtonClass
+                            )}
                             aria-label={t.app.cancel}
                             onMouseDown={(event) => event.preventDefault()}
                             onClick={() =>
@@ -809,7 +864,10 @@ export function SettingsPage({
                             type="button"
                             variant="ghost"
                             size="icon-sm"
-                            className="ousia-squircle-corners absolute top-1/2 right-1 size-7 -translate-y-1/2 rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground active:scale-[0.96]"
+                            className={cn(
+                              "absolute top-1/2 right-1 size-7 -translate-y-1/2",
+                              settingsIconButtonClass
+                            )}
                             aria-label={`${t.app.edit} ${provider.id} API Key`}
                             onClick={() =>
                               editEnvironmentProviderApiKey(provider.id)
@@ -823,7 +881,10 @@ export function SettingsPage({
                         type="button"
                         variant="ghost"
                         size="icon-sm"
-                        className="ousia-squircle-corners justify-self-end rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground active:scale-[0.96]"
+                        className={cn(
+                          "justify-self-end @max-[639px]:row-start-1",
+                          settingsIconButtonClass
+                        )}
                         aria-label={`${t.app.delete} ${provider.id}`}
                         disabled={draft.modelProviders.length <= 1}
                         onClick={() => deleteProvider(provider.id)}
@@ -859,8 +920,8 @@ export function SettingsPage({
                   </Button>
                 </div>
 
-                <label className="mt-4 block">
-                  <span className="text-xs font-medium text-muted-foreground">
+                <label className="mt-5 grid gap-2">
+                  <span className={settingsLabelClass}>
                     {t.settings.provider}
                   </span>
                   <Select
@@ -874,7 +935,7 @@ export function SettingsPage({
                   >
                     <SelectTrigger
                       aria-label={t.settings.provider}
-                      className="ousia-squircle-corners mt-2 w-full rounded-xl border-[0.5px] border-foreground/10 bg-white hover:bg-white"
+                      className="ousia-squircle-corners h-9 w-full rounded-xl border-[0.5px] border-foreground/10 bg-white hover:bg-white"
                     >
                       <SelectValue placeholder={t.settings.chooseProvider} />
                     </SelectTrigger>
@@ -890,13 +951,11 @@ export function SettingsPage({
                   </Select>
                 </label>
 
-                <label className="mt-4 block">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    API Key
-                  </span>
+                <label className="mt-5 grid gap-2">
+                  <span className={settingsLabelClass}>API Key</span>
                   <Input
                     aria-label="API Key"
-                    className="ousia-squircle-corners mt-2 rounded-xl border-[0.5px] border-foreground/10 bg-white focus-visible:bg-white disabled:cursor-default disabled:bg-neutral-50 disabled:text-neutral-500 disabled:opacity-100"
+                    className="ousia-squircle-corners rounded-xl border-[0.5px] border-foreground/10 bg-white focus-visible:bg-white disabled:cursor-default disabled:bg-neutral-50 disabled:text-neutral-500 disabled:opacity-100"
                     disabled={newProviderUsesEnvironment}
                     value={newProviderUsesEnvironment ? "" : newProviderApiKey}
                     onChange={(event) =>
@@ -917,7 +976,7 @@ export function SettingsPage({
                   />
                   <button
                     type="button"
-                    className="mt-2 inline-flex text-xs leading-5 font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                    className="inline-flex w-fit text-sm leading-5 font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                     onClick={() => {
                       setNewProviderApiKey("")
                       setNewProviderUsesEnvironment(true)
@@ -926,7 +985,7 @@ export function SettingsPage({
                     {t.settings.useEnvironmentApiKey}
                   </button>
                   {!newProviderUsesEnvironment && !newProviderApiKey.trim() ? (
-                    <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                    <span className={settingsHelpClass}>
                       {t.settings.apiKeyRequired}
                     </span>
                   ) : null}
@@ -936,16 +995,14 @@ export function SettingsPage({
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
-                    className="ousia-squircle-corners h-10 rounded-2xl border-[0.5px] border-foreground/10 bg-white px-5 text-neutral-950 hover:bg-neutral-50 active:scale-[0.96]"
+                    className="ousia-squircle-corners rounded-xl border-[0.5px] border-foreground/10 bg-white px-4 text-neutral-950 hover:bg-neutral-50 active:scale-[0.96]"
                     onClick={() => setIsAddProviderDialogOpen(false)}
                   >
                     {t.app.cancel}
                   </Button>
                   <Button
                     type="button"
-                    size="sm"
-                    className="ousia-squircle-corners h-10 rounded-2xl bg-neutral-950 px-5 text-white hover:bg-neutral-800 active:scale-[0.96]"
+                    className="ousia-squircle-corners rounded-xl bg-neutral-950 px-4 text-white hover:bg-neutral-800 active:scale-[0.96]"
                     disabled={!canAddProvider}
                     onClick={addProvider}
                   >
@@ -957,41 +1014,45 @@ export function SettingsPage({
           </section>
 
           <section className={settingsSectionClass}>
-            <h2 className="text-sm font-semibold">{t.settings.advanced}</h2>
-            <div className={settingsFieldClass}>
-              <label className={settingsLabelClass}>
-                {t.settings.defaultWorkDir}
-              </label>
-              <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-                <Input
-                  className="ousia-squircle-corners flex-1 rounded-xl border-[0.5px] border-foreground/10 bg-input/30"
-                  value={draft.defaultWorkDir}
-                  onChange={(event) =>
-                    updateDraft({
-                      defaultWorkDir: event.target.value,
-                    })
-                  }
-                  onBlur={() => commitRequiredTextSetting("defaultWorkDir")}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.currentTarget.blur()
+            <SettingsSectionHeader
+              title={t.settings.advanced}
+              description={t.settings.advancedDescription}
+            />
+            <div className={settingsFieldListClass}>
+              <div className={settingsFieldClass}>
+                <label className={settingsLabelClass}>
+                  {t.settings.defaultWorkDir}
+                </label>
+                <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 @max-[520px]:grid-cols-1">
+                  <Input
+                    className={settingsControlClass}
+                    value={draft.defaultWorkDir}
+                    onChange={(event) =>
+                      updateDraft({
+                        defaultWorkDir: event.target.value,
+                      })
                     }
-                  }}
-                  placeholder="~/.ousia/chat"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="ousia-squircle-corners h-9 rounded-xl border-[0.5px] border-foreground/10 bg-input/30 hover:bg-input/45"
-                  onClick={chooseDefaultWorkDir}
-                >
-                  <FolderOpen size={18} />
-                  {t.settings.choose}
-                </Button>
-              </div>
-              <div className={settingsHelpClass}>
-                {t.settings.defaultWorkDirHelp}
+                    onBlur={() => commitRequiredTextSetting("defaultWorkDir")}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.currentTarget.blur()
+                      }
+                    }}
+                    placeholder="~/.ousia/chat"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="ousia-squircle-corners h-9 rounded-xl border-[0.5px] border-foreground/10 bg-input/30 px-4 hover:bg-input/45 @max-[520px]:w-full"
+                    onClick={chooseDefaultWorkDir}
+                  >
+                    <FolderOpen size={18} />
+                    {t.settings.choose}
+                  </Button>
+                </div>
+                <div className={settingsHelpClass}>
+                  {t.settings.defaultWorkDirHelp}
+                </div>
               </div>
             </div>
           </section>
