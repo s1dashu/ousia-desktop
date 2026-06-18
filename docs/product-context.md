@@ -12,7 +12,7 @@ extension actions have been removed.
 In scope:
 
 - Project and session navigation in the left sidebar.
-- Agent chat backed by pi coding agent in Electron main.
+- Agent chat backed by Pi coding agent in Electron main.
 - Project/session isolated cwd for agent work.
 - User settings for appearance mode, Radix color scale, model provider API
   keys, model, thinking level, and default chat directory.
@@ -24,7 +24,7 @@ Out of scope:
 - Built-in right-side terminal or other secondary workspace panels.
 - Workspace extension tabs or extension picker.
 - Local `ousia extension ...` CLI bridge.
-- Ousia extension usage skill injection into pi sessions.
+- Ousia extension usage skill injection into Pi sessions.
 
 ## Product Boundary
 
@@ -36,6 +36,6 @@ panel.
 ## Glossary
 
 - Sidebar: left project/session/settings navigation.
-- Chat: central conversation surface for the pi coding agent.
+- Chat: central conversation surface for the Pi coding agent.
 - Default chat directory: directory used by unassigned sessions, currently
   `~/.ousia/chat`.

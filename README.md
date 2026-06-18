@@ -1,6 +1,6 @@
 # Ousia Desktop
 
-Ousia Desktop is a simplified Electron client for running pi coding agent
+Ousia Desktop is a simplified Electron client for running Pi coding agent
 sessions across local projects. The app focuses on a direct chat workflow:
 choose a project, start or resume a session, configure your model provider, and
 let the agent work in the selected project directory.
@@ -9,7 +9,7 @@ let the agent work in the selected project directory.
 
 This repository is early and pre-release. The current app is intentionally
 small: sidebar navigation, chat, project/session persistence, settings, and the
-Electron bridge to pi coding agent. The older Ousia extension and workspace-tab
+Electron bridge to Pi coding agent. The older Ousia extension and workspace-tab
 surfaces are not part of this branch.
 
 ## Features
@@ -60,10 +60,9 @@ npm run make
 
 ## Configuration
 
-API keys can be entered in the app settings or read from the environment by the
-underlying provider tooling. Settings are stored in Electron's app data
-directory, including configured provider keys. Treat that local state as
-sensitive.
+API keys must be entered in the app settings. Settings are stored in Electron's
+app data directory, including configured provider keys. Treat that local state
+as sensitive.
 
 Unsigned local macOS packages work without Apple credentials. To sign and
 notarize macOS builds, set:

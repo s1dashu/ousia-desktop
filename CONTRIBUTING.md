@@ -28,7 +28,7 @@ with the current product boundary:
 
 - Chat is the primary agent surface.
 - The sidebar owns project, session, and settings navigation.
-- The Electron main process hosts pi coding agent sessions.
+- The Electron main process hosts Pi coding agent sessions.
 - The removed Ousia extension/runtime-extension/workspace-tab surfaces should
   not be reintroduced unless that direction changes explicitly.
 

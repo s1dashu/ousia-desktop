@@ -912,7 +912,7 @@ export function createAgentConversationModule({
     if (!sourceSessionFile) {
       return {
         ok: false,
-        error: "当前会话还没有可分支的 pi 历史。",
+        error: "当前会话还没有可分支的 Pi 历史。",
       }
     }
 
@@ -930,7 +930,7 @@ export function createAgentConversationModule({
       if (!leafId) {
         return {
           ok: false,
-          error: "没有在 pi 会话树中找到这条消息，无法创建真实分支。",
+          error: "没有在 Pi 会话树中找到这条消息，无法创建真实分支。",
         }
       }
 

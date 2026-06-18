@@ -18,8 +18,8 @@ match the task.
 - The app shell is assembled from React surfaces: sidebar, chat, and settings.
 - There is no Ousia extension/runtime-extension/plugin surface in this branch.
 - The desktop runtime is Electron + Vite + React.
-- The real coding agent is pi coding agent, hosted in Electron main process.
-- Chat requests include `projectPath` and `sessionId`; pi sessions are isolated
+- The real coding agent is Pi coding agent, hosted in Electron main process.
+- Chat requests include `projectPath` and `sessionId`; Pi sessions are isolated
   by project/session so tool execution uses the selected project as cwd.
 - Default chat dir is user configurable and defaults to `~/.ousia/chat`.
 - Runtime logs are persisted at `~/.ousia/logs/ousia-desktop.log`; check this
@@ -30,7 +30,7 @@ match the task.
 
 - App shell and current UI state: [src/App.tsx](src/App.tsx)
 - Chat UI: [src/features/chat/ChatArea.tsx](src/features/chat/ChatArea.tsx)
-- Electron main process and pi session bridge: [src/electron/main.ts](src/electron/main.ts)
+- Electron main process and Pi session bridge: [src/electron/main.ts](src/electron/main.ts)
 - Electron preload API: [src/electron/preload.ts](src/electron/preload.ts)
 - Renderer IPC types: [src/electron/chat-types.ts](src/electron/chat-types.ts)
 - Electron Forge config: [forge.config.cjs](forge.config.cjs)
@@ -41,7 +41,7 @@ match the task.
 - Do not reintroduce Ousia extension, runtime extension, plugin, addon, browser,
   editor, PDF, Excalidraw, or Sheets workspace surfaces unless the user
   explicitly asks to reverse this branch direction.
-- Do not inject an Ousia extension usage skill or CLI bridge into pi sessions.
+- Do not inject an Ousia extension usage skill or CLI bridge into Pi sessions.
 - Preserve the shadcn preset theme direction unless the user explicitly changes
   it.
 - Keep primary floating panels, menus, popovers, dialogs, and dropdown surfaces
@@ -55,4 +55,4 @@ match the task.
 - Before changing shadcn/ui primitives, compare against the generated reference
   under `ref/`; see `docs/shadcn-reference.md`.
 - When changing agent behavior, verify whether the change belongs in renderer
-  state, Electron IPC, or pi session setup.
+  state, Electron IPC, or Pi session setup.

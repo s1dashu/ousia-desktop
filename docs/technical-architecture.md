@@ -7,7 +7,7 @@ Ousia extension runtime. The renderer hosts the sidebar, chat, and settings.
 
 - Electron Forge + Vite for main, preload, and renderer builds.
 - React renderer with Tailwind/shadcn UI.
-- pi coding agent hosted in Electron main.
+- Pi coding agent hosted in Electron main.
 - Streamdown for assistant Markdown rendering.
 
 Removed from this branch:
@@ -18,7 +18,7 @@ Removed from this branch:
 - Built-in right-side terminal and PTY host.
 - Extension-owned state storage.
 - Local `ousia extension ...` CLI bridge.
-- Ousia extension usage skill injection into pi sessions.
+- Ousia extension usage skill injection into Pi sessions.
 
 ## Renderer
 
@@ -47,7 +47,7 @@ Main process entrypoints:
 
 - `src/electron/main.ts`: registers IPC for app state, chat, models, project
   directory selection, window helpers, and logging.
-- `src/electron/agent-conversations.ts`: owns pi session creation, model
+- `src/electron/agent-conversations.ts`: owns Pi session creation, model
   selection, chat streaming, history, and interrupt handling.
 - `src/electron/app-state-store.ts`: persists shell, settings, project, session,
   and window state.
@@ -74,7 +74,7 @@ Main process entrypoints:
 ## Agent Sessions
 
 Each chat request includes `projectPath` and `sessionId`. Electron main expands
-the project path, creates a pi agent dir under `userData/pi-agent`, and stores
+the project path, creates a Pi agent dir under `userData/pi-agent`, and stores
 conversation history under `userData/sessions/<project>/<session>`.
 
 The app no longer installs an Ousia usage skill, filters a user `ousia` skill,

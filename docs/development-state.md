@@ -24,7 +24,7 @@ desktop agent client:
 - No right-side workspace panel, workspace tab strip, extension picker, runtime
   extension watcher, browser host, editor/PDF host, or extension state store.
 - No `ousia extension ...` CLI bridge.
-- No Ousia extension usage skill injection into pi sessions.
+- No Ousia extension usage skill injection into Pi sessions.
 
 ## Implemented UI State
 
