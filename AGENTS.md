@@ -38,6 +38,8 @@ match the task.
 
 ## Working Rules For Future Agents
 
+- 优先定位问题的根本原因并修复根因；不要只为当前坏数据或单个 badcase
+  做补丁式恢复，除非用户明确要求先救数据。
 - Do not reintroduce Ousia extension, runtime extension, plugin, addon, browser,
   editor, PDF, Excalidraw, or Sheets workspace surfaces unless the user
   explicitly asks to reverse this branch direction.
