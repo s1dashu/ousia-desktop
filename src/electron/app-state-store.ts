@@ -1,6 +1,6 @@
 import { app } from "electron"
 import { existsSync, mkdirSync } from "node:fs"
-import { readFile, writeFile } from "node:fs/promises"
+import { readFile, rename, unlink, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
 import {
   createDefaultOusiaAppState,
@@ -18,6 +18,7 @@ import {
   type OusiaWindowState,
 } from "./chat-types.js"
 import { expandHomePath } from "./host-paths.js"
+import { writeRuntimeLog } from "./runtime-logger.js"
 import {
   MAIN_WINDOW_MIN_HEIGHT,
   MAIN_WINDOW_MIN_WIDTH,
@@ -236,16 +237,40 @@ function normalizeAppState(value: unknown): OusiaAppState {
   }
 }
 
-async function readNormalizedAppStateFromDisk(): Promise<OusiaAppState | null> {
-  const filePath = appStatePath()
+async function readNormalizedAppStateFile(
+  filePath: string
+): Promise<OusiaAppState | null> {
   if (!existsSync(filePath)) {
     return null
   }
 
   try {
     return normalizeAppState(JSON.parse(await readFile(filePath, "utf8")))
-  } catch {
+  } catch (error) {
+    writeRuntimeLog("app-state", "warn", "Failed to read app state", {
+      error: error instanceof Error ? error.message : String(error),
+      filePath,
+    })
     return null
+  }
+}
+
+async function readNormalizedAppStateFromDisk(): Promise<OusiaAppState | null> {
+  return readNormalizedAppStateFile(appStatePath())
+}
+
+async function writeNormalizedAppStateFile(
+  filePath: string,
+  state: OusiaAppState
+) {
+  mkdirSync(dirname(filePath), { recursive: true })
+  const temporaryPath = `${filePath}.${Date.now()}.${process.pid}.tmp`
+  try {
+    await writeFile(temporaryPath, `${JSON.stringify(state, null, 2)}\n`, "utf8")
+    await rename(temporaryPath, filePath)
+  } catch (error) {
+    await unlink(temporaryPath).catch(() => undefined)
+    throw error
   }
 }
 
@@ -267,11 +292,7 @@ export async function saveAppState(
       ...state,
       windowState: currentState?.windowState ?? state.windowState,
     })
-    await writeFile(
-      filePath,
-      `${JSON.stringify(normalizedState, null, 2)}\n`,
-      "utf8"
-    )
+    await writeNormalizedAppStateFile(filePath, normalizedState)
     return { ok: true }
   })
 }
@@ -289,11 +310,7 @@ export async function saveWindowState(
       ...currentState,
       windowState: normalizeWindowState(windowState),
     })
-    await writeFile(
-      filePath,
-      `${JSON.stringify(normalizedState, null, 2)}\n`,
-      "utf8"
-    )
+    await writeNormalizedAppStateFile(filePath, normalizedState)
     return { ok: true }
   })
 }

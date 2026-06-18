@@ -8,6 +8,7 @@ import {
 import { basename } from "node:path"
 
 import { createAgentConversationModule } from "./agent-conversations.js"
+import { configureOusiaAppPaths } from "./app-paths.js"
 import { loadAppState, saveAppState } from "./app-state-store.js"
 import { generateChatTitleWithUtilityModel } from "./chat-title-generator.js"
 import type {
@@ -32,6 +33,7 @@ import {
 } from "./runtime-logger.js"
 import { createWindowHost } from "./window-host.js"
 
+configureOusiaAppPaths()
 installRuntimeLogger()
 
 const enabledTools = ["read", "write", "edit", "bash", "grep", "find", "ls"]
@@ -191,6 +193,10 @@ ipcMain.on("ousia:log:renderer-error", (_event, payload: unknown) => {
 
 app.whenReady().then(async () => {
   writeRuntimeLog("main", "info", `Runtime log path: ${OUSIA_DESKTOP_LOG_PATH}`)
+  writeRuntimeLog("main", "info", {
+    appData: app.getPath("appData"),
+    userData: app.getPath("userData"),
+  })
   await windowHost.createWindow()
 })
 
