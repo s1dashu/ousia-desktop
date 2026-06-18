@@ -7,9 +7,29 @@ const { MakerSquirrel } = require("@electron-forge/maker-squirrel")
 const { MakerZIP } = require("@electron-forge/maker-zip")
 const { VitePlugin } = require("@electron-forge/plugin-vite")
 
-const appBundleId = "com.ousia.desktop"
-const macSignIdentity = "Developer ID Application: hongxia sun (9UXM7M6CX5)"
+const appBundleId = process.env.APP_BUNDLE_ID || "com.ousia.desktop"
+const macSignIdentity = process.env.APPLE_SIGN_IDENTITY
 const macIcon = join(__dirname, "assets", "icon.icns")
+const shouldSignMac = Boolean(macSignIdentity)
+const shouldNotarizeMac = Boolean(
+  process.env.APPLE_ID &&
+    process.env.APPLE_APP_SPECIFIC_PASSWORD &&
+    process.env.APPLE_TEAM_ID
+)
+
+const macDmgConfig = {
+  icon: macIcon,
+  ...(shouldSignMac
+    ? {
+        additionalDMGOptions: {
+          "code-sign": {
+            "signing-identity": macSignIdentity,
+            identifier: appBundleId,
+          },
+        },
+      }
+    : {}),
+}
 
 module.exports = {
   packagerConfig: {
@@ -18,15 +38,23 @@ module.exports = {
     appBundleId,
     appCategoryType: "public.app-category.developer-tools",
     icon: macIcon,
-    osxSign: {
-      identity: macSignIdentity,
-      hardenedRuntime: true,
-    },
-    osxNotarize: {
-      appleId: process.env.APPLE_ID,
-      appleIdPassword: process.env.APPLE_APP_SPECIFIC_PASSWORD,
-      teamId: process.env.APPLE_TEAM_ID,
-    },
+    ...(shouldSignMac
+      ? {
+          osxSign: {
+            identity: macSignIdentity,
+            hardenedRuntime: true,
+          },
+        }
+      : {}),
+    ...(shouldSignMac && shouldNotarizeMac
+      ? {
+          osxNotarize: {
+            appleId: process.env.APPLE_ID,
+            appleIdPassword: process.env.APPLE_APP_SPECIFIC_PASSWORD,
+            teamId: process.env.APPLE_TEAM_ID,
+          },
+        }
+      : {}),
     ignore: (file) => {
       if (!file) {
         return false
@@ -47,18 +75,7 @@ module.exports = {
   rebuildConfig: {},
   makers: [
     new MakerSquirrel({}),
-    new MakerDMG(
-      {
-        icon: macIcon,
-        additionalDMGOptions: {
-          "code-sign": {
-            "signing-identity": macSignIdentity,
-            identifier: appBundleId,
-          },
-        },
-      },
-      ["darwin"]
-    ),
+    new MakerDMG(macDmgConfig, ["darwin"]),
     new MakerZIP({}, ["darwin"]),
     new MakerRpm({}),
     new MakerDeb({}),

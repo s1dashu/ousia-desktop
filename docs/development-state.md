@@ -14,9 +14,9 @@ Useful log tail:
 tail -200 ~/.ousia/logs/ousia-desktop.log
 ```
 
-## Current Branch Direction
+## Current Direction
 
-The `simple-gui` branch removes the Ousia extension system and keeps a simpler
+The simplified app removes the Ousia extension system and keeps a smaller
 desktop agent client:
 
 - Sidebar for sessions/projects/settings.

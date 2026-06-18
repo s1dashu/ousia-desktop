@@ -1,7 +1,7 @@
 # Technical Architecture
 
-Ousia Desktop is an Electron + Vite + React app. On the `simple-gui` branch,
-the app has no Ousia extension runtime. The renderer hosts the sidebar and chat.
+Ousia Desktop is an Electron + Vite + React app. The simplified app has no
+Ousia extension runtime. The renderer hosts the sidebar, chat, and settings.
 
 ## Runtime Stack
 
@@ -88,8 +88,8 @@ include appearance mode, Radix color scale, default chat directory, send-during-
 mode, thinking level, selected model, and per-provider API keys.
 
 `src/electron/app-state-store.ts` accepts the current schema only. Invalid or
-older development-state files fall back to default state because this dev branch
-has not shipped a stable persistence contract yet.
+older development-state files fall back to default state because this pre-release
+app has not shipped a stable persistence contract yet.
 
 ## Runtime Logs
 

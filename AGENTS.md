@@ -14,17 +14,14 @@ match the task.
 
 ## High-Signal Facts
 
-- The `simple-gui` branch is a reduced desktop agent client.
-- The app shell is assembled from React surfaces: sidebar, chat, and a right
-  terminal panel.
+- The current app is a reduced desktop agent client.
+- The app shell is assembled from React surfaces: sidebar, chat, and settings.
 - There is no Ousia extension/runtime-extension/plugin surface in this branch.
-- The right-side terminal is the only secondary surface. The chat header terminal
-  icon expands it directly.
 - The desktop runtime is Electron + Vite + React.
 - The real coding agent is pi coding agent, hosted in Electron main process.
 - Chat requests include `projectPath` and `sessionId`; pi sessions are isolated
   by project/session so tool execution uses the selected project as cwd.
-- Default work dir is user configurable and defaults to `~/.ousia/workspace`.
+- Default chat dir is user configurable and defaults to `~/.ousia/chat`.
 - Runtime logs are persisted at `~/.ousia/logs/ousia-desktop.log`; check this
   file first for Electron main errors, renderer console messages, renderer
   uncaught errors, and chat/title-generation failures.
@@ -33,7 +30,6 @@ match the task.
 
 - App shell and current UI state: [src/App.tsx](src/App.tsx)
 - Chat UI: [src/features/chat/ChatArea.tsx](src/features/chat/ChatArea.tsx)
-- Right terminal panel: [src/features/terminal/TerminalPanel.tsx](src/features/terminal/TerminalPanel.tsx)
 - Electron main process and pi session bridge: [src/electron/main.ts](src/electron/main.ts)
 - Electron preload API: [src/electron/preload.ts](src/electron/preload.ts)
 - Renderer IPC types: [src/electron/chat-types.ts](src/electron/chat-types.ts)
@@ -46,7 +42,6 @@ match the task.
   editor, PDF, Excalidraw, or Sheets workspace surfaces unless the user
   explicitly asks to reverse this branch direction.
 - Do not inject an Ousia extension usage skill or CLI bridge into pi sessions.
-- Keep the right panel terminal-first and direct; it is not a tabbed workspace.
 - Preserve the shadcn preset theme direction unless the user explicitly changes
   it.
 - Keep primary floating panels, menus, popovers, dialogs, and dropdown surfaces

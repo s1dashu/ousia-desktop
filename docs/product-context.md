@@ -1,9 +1,9 @@
 # Product Context
 
-This branch is the simplified Ousia desktop client. The product focus is a
+This project is the simplified Ousia desktop client. The product focus is a
 direct agent chat experience with projects, sessions, and settings.
 
-The app is intentionally not extension-native on this branch. Runtime
+The app is intentionally not extension-native in this direction. Runtime
 extensions, first-party workspace extensions, extension tabs, and agent-operable
 extension actions have been removed.
 

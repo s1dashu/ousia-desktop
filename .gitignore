@@ -7,11 +7,18 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+.env
+.env.*
+!.env.example
+
 node_modules
 dist
 dist-ssr
 out
 .vite
+coverage
+tmp
+.ousia
 *.local
 
 # Editor directories and files
