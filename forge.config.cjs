@@ -17,18 +17,39 @@ const shouldNotarizeMac = Boolean(
     process.env.APPLE_TEAM_ID
 )
 
+const dmgWindowSize = { width: 658, height: 520 }
+const hiddenDmgSupportFiles = [
+  ".background",
+  ".DS_Store",
+  ".Trashes",
+  ".VolumeIcon.icns",
+]
+
 const macDmgConfig = {
   icon: macIcon,
-  ...(shouldSignMac
-    ? {
-        additionalDMGOptions: {
+  contents: (options) => [
+    { x: 192, y: 344, type: "file", path: options.appPath },
+    { x: 448, y: 344, type: "link", path: "/Applications" },
+    // Finder shows dotfiles when AppleShowAllFiles is enabled, so keep
+    // appdmg's support files outside the initial installer window.
+    ...hiddenDmgSupportFiles.map((path, index) => ({
+      x: dmgWindowSize.width + 200 + index * 96,
+      y: dmgWindowSize.height + 200,
+      type: "position",
+      path,
+    })),
+  ],
+  additionalDMGOptions: {
+    window: { size: dmgWindowSize },
+    ...(shouldSignMac
+      ? {
           "code-sign": {
             "signing-identity": macSignIdentity,
             identifier: appBundleId,
           },
-        },
-      }
-    : {}),
+        }
+      : {}),
+  },
 }
 
 module.exports = {
