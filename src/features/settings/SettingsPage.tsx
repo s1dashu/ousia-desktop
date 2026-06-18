@@ -317,7 +317,10 @@ export function SettingsPage({
   const canAddProvider = hasAddableProvider && Boolean(newProviderApiKey.trim())
 
   function openAddProviderDialog() {
-    setNewProviderId(addableProviders[0]?.id ?? "")
+    const defaultProvider =
+      addableProviders.find((provider) => provider.id === "deepseek") ??
+      addableProviders[0]
+    setNewProviderId(defaultProvider?.id ?? "")
     setNewProviderApiKey("")
     setIsAddProviderDialogOpen(true)
   }
