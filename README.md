@@ -46,17 +46,6 @@ npm run lint
 npm run check
 ```
 
-Security audit:
-
-```bash
-npm run audit:prod
-```
-
-`audit:prod` uses the official npm registry because some mirrors do not
-implement the npm audit API. At the moment, npm may still report advisories from
-transitive dependencies nested inside `@earendil-works/pi-coding-agent`; those
-need an upstream package release to fully resolve.
-
 Build a local Electron package:
 
 ```bash
