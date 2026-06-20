@@ -21,6 +21,8 @@
     "package:forge": "electron-forge package",
     "make": "npm run make:dmg",
     "make:dmg": "node scripts/make-dmg.cjs",
+    "make:dmg:signed": "node scripts/make-dmg-signed.cjs",
+    "notarize:dmg": "node scripts/notarize-dmg.cjs",
     "make:dmg:notarized": "node scripts/make-dmg-notarized.cjs",
     "make:forge": "electron-forge make",
     "publish": "electron-forge publish",

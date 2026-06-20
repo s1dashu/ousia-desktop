@@ -13,14 +13,20 @@ Packaging commands:
 ```bash
 npm run package
 npm run make
+npm run make:dmg:signed
+npm run notarize:dmg -- out/make/Ousia-0.1.1-arm64.dmg
 npm run make:dmg:notarized
 ```
 
 - `npm run package` builds only `out/Ousia-darwin-arm64/Ousia.app` for local
   production smoke testing.
 - `npm run make` builds a fast local DMG without signing or notarization.
-- `npm run make:dmg:notarized` signs, notarizes, staples, and verifies the app
-  and DMG for release distribution.
+- `npm run make:dmg:signed` signs the app and DMG but does not notarize them.
+- `npm run notarize:dmg -- <path-to-dmg>` notarizes, staples, and verifies an
+  existing signed DMG. If no path is provided, it uses the newest DMG under
+  `out/make`.
+- `npm run make:dmg:notarized` runs the signed DMG build and then notarizes that
+  DMG for release distribution.
 
 Useful log tail:
 

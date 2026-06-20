@@ -1,8 +1,13 @@
 #!/usr/bin/env node
 
-const { runMacBuild } = require("./mac-build.cjs")
+const { notarizeExistingDmg, runMacBuild } = require("./mac-build.cjs")
 
-runMacBuild({ makeDmg: true, notarize: true, sign: true }).catch((error) => {
+async function main() {
+  const { dmgPath } = await runMacBuild({ makeDmg: true, sign: true })
+  await notarizeExistingDmg({ dmgPath })
+}
+
+main().catch((error) => {
   console.error(error)
   process.exit(error.exitCode ?? 1)
 })

@@ -2,13 +2,14 @@ const { spawnSync } = require("node:child_process")
 const {
   existsSync,
   mkdirSync,
+  mkdtempSync,
   readdirSync,
   readFileSync,
   rmSync,
   statSync,
 } = require("node:fs")
-const { homedir } = require("node:os")
-const { join } = require("node:path")
+const { homedir, tmpdir } = require("node:os")
+const { isAbsolute, join, resolve } = require("node:path")
 
 const rootDir = join(__dirname, "..")
 const outDir = join(rootDir, "out")
@@ -409,6 +410,56 @@ function signDmg(dmgPath) {
   run("codesign", ["--verify", "--verbose=2", dmgPath])
 }
 
+function resolveDmgPath(dmgPath) {
+  if (dmgPath) {
+    return isAbsolute(dmgPath) ? dmgPath : resolve(rootDir, dmgPath)
+  }
+
+  const dmgFiles = listFiles(makeDir, (path) => path.endsWith(".dmg"))
+  assert(
+    dmgFiles.length > 0,
+    "No DMG found. Run npm run make:dmg:signed first or pass a DMG path."
+  )
+  return dmgFiles.sort(
+    (left, right) => statSync(right).mtimeMs - statSync(left).mtimeMs
+  )[0]
+}
+
+function verifySignedAppInsideDmg(dmgPath) {
+  if (process.platform !== "darwin") {
+    return
+  }
+
+  const mountDir = mkdtempSync(join(tmpdir(), "ousia-dmg-"))
+  let attached = false
+  try {
+    run("hdiutil", [
+      "attach",
+      "-nobrowse",
+      "-readonly",
+      "-mountpoint",
+      mountDir,
+      dmgPath,
+    ])
+    attached = true
+
+    const appPath = join(mountDir, "Ousia.app")
+    assert(
+      existsSync(appPath),
+      `DMG does not contain Ousia.app at the expected path: ${appPath}`
+    )
+    run("codesign", ["--verify", "--deep", "--strict", "--verbose=2", appPath])
+  } finally {
+    if (attached) {
+      const detachResult = capture("hdiutil", ["detach", mountDir])
+      if (detachResult.status !== 0) {
+        capture("hdiutil", ["detach", "-force", mountDir])
+      }
+    }
+    rmSync(mountDir, { force: true, recursive: true })
+  }
+}
+
 function verifyAppDistribution(appPath, { signed, notarized }) {
   if (process.platform !== "darwin" || !signed) {
     return
@@ -441,6 +492,23 @@ function verifyDmgDistribution(dmgPath, { signed, notarized }) {
       dmgPath,
     ])
   }
+}
+
+async function notarizeExistingDmg(options = {}) {
+  const dmgPath = resolveDmgPath(options.dmgPath)
+  assert(existsSync(dmgPath), `DMG does not exist: ${dmgPath}`)
+  requireAppleNotarizationCredentials()
+  requireCodeSigningIdentity()
+  configureNodeProxyFromSystem()
+
+  return await withAppleNetworkBypass(async () => {
+    verifySignedAppInsideDmg(dmgPath)
+    signDmg(dmgPath)
+    await notarizeArtifact(dmgPath, "DMG")
+    verifyDmgDistribution(dmgPath, { notarized: true, signed: true })
+    console.log(`Notarized DMG: ${dmgPath}`)
+    return { dmgPath }
+  })
 }
 
 async function buildMac(options = {}) {
@@ -583,6 +651,7 @@ async function runMacBuild(options = {}) {
 
 module.exports = {
   buildMac,
+  notarizeExistingDmg,
   paths: {
     makeDir,
     packagedAppDir,
