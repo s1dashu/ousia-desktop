@@ -238,11 +238,15 @@ function listMountedDmgVolumes(volumeName) {
   }
 
   const escapedName = volumeName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-  const volumePattern = new RegExp(`^/Volumes/${escapedName}(?: \\d+)?$`)
-  return result.stdout
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => volumePattern.test(line))
+  const volumePattern = new RegExp(`(/Volumes/${escapedName}(?: \\d+)?)$`)
+  return [
+    ...new Set(
+      result.stdout
+        .split(/\r?\n/)
+        .map((line) => line.match(volumePattern)?.[1])
+        .filter(Boolean)
+    ),
+  ]
 }
 
 function detachMountedDmgVolumes(volumeName) {
