@@ -97,7 +97,6 @@ ipcMain.handle(
   async (_event, payload: OusiaChatExportPayload) => {
     const extensions = {
       markdown: ["md"],
-      html: ["html"],
       jsonl: ["jsonl"],
     }[payload.format]
     const defaultPath = `${basename(payload.sessionId || "chat")}.${extensions[0]}`

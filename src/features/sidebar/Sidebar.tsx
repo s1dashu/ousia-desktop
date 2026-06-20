@@ -54,7 +54,7 @@ const sidebarSessionRowXClass =
   "-mx-[7px] w-[calc(100%+14px)] pl-3 pr-[7px]"
 const sidebarProjectRowXClass = "w-full pl-2 pr-0"
 const sidebarListGapClass = "flex flex-col gap-0.5"
-const sidebarSectionHeaderXClass = "pl-2 pr-0"
+const sidebarSectionHeaderXClass = "pl-[5px] pr-0"
 const sidebarProjectSessionCompactCount = 5
 const sidebarProjectSessionPreviewCount = 10
 const sidebarScrollRevealPadding = 12

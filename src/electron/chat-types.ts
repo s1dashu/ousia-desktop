@@ -607,7 +607,7 @@ export type OusiaChatBranchResult =
       error: string
     }
 
-export type OusiaChatExportFormat = "markdown" | "html" | "jsonl"
+export type OusiaChatExportFormat = "markdown" | "jsonl"
 
 export type OusiaChatExportPayload = OusiaChatContext & {
   format: OusiaChatExportFormat

@@ -1,3 +1,4 @@
+import "./pi-package-dir.js"
 import { completeSimple } from "@earendil-works/pi-ai"
 import type { Api, AssistantMessage, Model } from "@earendil-works/pi-ai"
 import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent"

@@ -27,7 +27,7 @@ type ChatHeaderProps = {
   isScrolled: boolean
   isWindowFullscreen: boolean
   onCopySessionHistory: () => void
-  onExportSession: (format: "markdown" | "html" | "jsonl") => void
+  onExportSession: (format: "markdown" | "jsonl") => void
   onManualCompact: () => void
   onSessionMenuOpenChange: (open: boolean) => void
   t: ReturnType<typeof getMessages>
@@ -123,13 +123,6 @@ export function ChatHeader({
             >
               <Copy size={18} className="text-neutral-500" />
               <span className="flex-1">{t.chat.exportMarkdown}</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="gap-2 rounded-sm px-2 py-1.5 hover:bg-neutral-100 focus:bg-neutral-100"
-              onClick={() => onExportSession("html")}
-            >
-              <Copy size={18} className="text-neutral-500" />
-              <span className="flex-1">{t.chat.exportHtml}</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               className="gap-2 rounded-sm px-2 py-1.5 hover:bg-neutral-100 focus:bg-neutral-100"

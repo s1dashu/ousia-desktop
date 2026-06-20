@@ -1,3 +1,4 @@
+import "./pi-package-dir.js"
 import { getSupportedThinkingLevels } from "@earendil-works/pi-ai"
 import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent"
 import { join } from "node:path"

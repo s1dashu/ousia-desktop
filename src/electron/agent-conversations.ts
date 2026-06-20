@@ -1,3 +1,4 @@
+import "./pi-package-dir.js"
 import {
   existsSync,
   mkdirSync,
@@ -6,10 +7,10 @@ import {
   writeFileSync,
 } from "node:fs"
 import { stat } from "node:fs/promises"
-import { createRequire } from "node:module"
-import { dirname, join } from "node:path"
+import { join } from "node:path"
 import { homedir } from "node:os"
 import { app } from "electron"
+import { ensurePiPackageDir } from "./pi-package-dir.js"
 import type { ImageContent } from "@earendil-works/pi-ai"
 import {
   AuthStorage,
@@ -68,11 +69,10 @@ type AgentConversationModuleOptions = {
 
 type PiSessionEntry = ReturnType<SessionManager["getEntries"]>[number]
 
-const require = createRequire(__filename)
-
 type AgentStreamState = {
   textId: string
   thinkingId: string
+  showThinking: boolean
   currentAssistantMessageId: string
   toolDisplayIdsByContentIndex: Map<number, string>
   toolDisplayIdsByProviderId: Map<string, string>
@@ -82,6 +82,7 @@ type AgentStreamState = {
 
 type HistoryBuildOptions = {
   includeToolPayloads: boolean
+  showThinking: boolean
 }
 
 type HistoryCacheEntry = {
@@ -99,10 +100,15 @@ function randomId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
-function createStreamState(): AgentStreamState {
+function shouldShowThinkingForLevel(level: string | undefined) {
+  return Boolean(level && level !== "off")
+}
+
+function createStreamState(thinkingLevel: string | undefined = "off"): AgentStreamState {
   return {
     textId: "",
     thinkingId: "",
+    showThinking: shouldShowThinkingForLevel(thinkingLevel),
     currentAssistantMessageId: "",
     toolDisplayIdsByContentIndex: new Map(),
     toolDisplayIdsByProviderId: new Map(),
@@ -198,67 +204,6 @@ function previewToolInput(value: string) {
     return Object.keys(summary).length ? JSON.stringify(summary) : fallback
   } catch {
     return fallback
-  }
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;")
-}
-
-function markdownToFallbackHtml(markdown: string) {
-  return `<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Ousia Chat Export</title>
-  <style>
-    :root { color-scheme: light; }
-    body {
-      margin: 0;
-      background: #fff;
-      color: #1f1f1d;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      line-height: 1.7;
-    }
-    main {
-      box-sizing: border-box;
-      max-width: 880px;
-      margin: 0 auto;
-      padding: 48px 28px;
-    }
-    pre {
-      margin: 0;
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-      font: inherit;
-    }
-  </style>
-</head>
-<body>
-  <main><pre>${escapeHtml(markdown)}</pre></main>
-</body>
-</html>
-`
-}
-
-function ensurePiPackageDirForHtmlExport() {
-  if (process.env.PI_PACKAGE_DIR) {
-    return
-  }
-  try {
-    const packageEntry = require.resolve("@earendil-works/pi-coding-agent")
-    process.env.PI_PACKAGE_DIR = dirname(dirname(packageEntry))
-  } catch (error) {
-    writeRuntimeLog("chat.export", "warn", {
-      reason: "resolve-pi-package-dir-failed",
-      error: error instanceof Error ? error.message : String(error),
-    })
   }
 }
 
@@ -534,7 +479,10 @@ function imageContentFromAttachments(
 function messageEntryToHistoryItems(
   entry: SessionMessageEntry,
   items: OusiaChatHistoryItem[],
-  options: HistoryBuildOptions = { includeToolPayloads: true }
+  options: HistoryBuildOptions = {
+    includeToolPayloads: true,
+    showThinking: true,
+  }
 ) {
   const message = entry.message as unknown as Record<string, unknown>
   const role = message.role
@@ -561,6 +509,9 @@ function messageEntryToHistoryItems(
       }
       const block = part as Record<string, unknown>
       if (block.type === "thinking") {
+        if (!options.showThinking) {
+          return
+        }
         const text = typeof block.thinking === "string" ? block.thinking : ""
         if (text) {
           items.push({
@@ -671,6 +622,26 @@ function messageEntryToHistoryItems(
       })
     }
   }
+}
+
+function branchEntriesToHistoryItems(
+  entries: PiSessionEntry[],
+  items: OusiaChatHistoryItem[],
+  includeToolPayloads = true
+) {
+  let thinkingLevel: string | undefined = "off"
+  entries.forEach((entry) => {
+    if (entry.type === "thinking_level_change") {
+      thinkingLevel = entry.thinkingLevel
+      return
+    }
+    if (entry.type === "message") {
+      messageEntryToHistoryItems(entry, items, {
+        includeToolPayloads,
+        showThinking: shouldShowThinkingForLevel(thinkingLevel),
+      })
+    }
+  })
 }
 
 function piEntryIdFromChatItemId(messageId: string) {
@@ -875,6 +846,15 @@ export function createAgentConversationModule({
   const streamState = new Map<string, AgentStreamState>()
   const interruptGenerations = new Map<string, number>()
 
+  function setStreamThinkingLevel(key: string, thinkingLevel: string | undefined) {
+    const state = streamState.get(key) ?? createStreamState(thinkingLevel)
+    state.showThinking = shouldShowThinkingForLevel(thinkingLevel)
+    if (!state.showThinking) {
+      state.thinkingId = ""
+    }
+    streamState.set(key, state)
+  }
+
   async function getHistoryItems(
     context: OusiaChatContext,
     includeToolPayloads: boolean
@@ -905,11 +885,7 @@ export function createAgentConversationModule({
 
     const sessionManager = SessionManager.open(sessionFile, conversationDir, cwd)
     const items: OusiaChatHistoryItem[] = []
-    sessionManager.getBranch().forEach((entry) => {
-      if (entry.type === "message") {
-        messageEntryToHistoryItems(entry, items, { includeToolPayloads })
-      }
-    })
+    branchEntriesToHistoryItems(sessionManager.getBranch(), items, includeToolPayloads)
     cacheEntry[cacheField] = items
     historyCache.set(key, cacheEntry)
     return items
@@ -995,11 +971,7 @@ export function createAgentConversationModule({
         cwd
       )
       const items: OusiaChatHistoryItem[] = []
-      targetSessionManager.getBranch().forEach((entry) => {
-        if (entry.type === "message") {
-          messageEntryToHistoryItems(entry, items)
-        }
-      })
+      branchEntriesToHistoryItems(targetSessionManager.getBranch(), items)
       return { ok: true, items }
     } catch (error) {
       writeRuntimeLog("chat.branch", "error", {
@@ -1348,6 +1320,7 @@ export function createAgentConversationModule({
     customAgentTools?: OusiaAgentToolName[],
     autoCompactContext?: boolean
   ) {
+    ensurePiPackageDir()
     const cwd = expandHomePath(context.projectPath)
     const userData = app.getPath("userData")
     const agentDir = join(userData, "pi-agent")
@@ -1595,6 +1568,7 @@ export function createAgentConversationModule({
         payload.customAgentTools,
         payload.autoCompactContext
       )
+      setStreamThinkingLevel(key, payload.thinkingLevel)
       const { session } = bundle
       if (images.length && !session.model?.input.includes("image")) {
         throw new Error("当前模型不支持图片输入，请切换到支持识图的模型后重试。")
@@ -1825,41 +1799,9 @@ export function createAgentConversationModule({
         payload.customAgentTools,
         payload.autoCompactContext
       )
-      if (payload.format === "html") {
-        ensurePiPackageDirForHtmlExport()
-      }
-      const path =
-        payload.format === "html"
-          ? await bundle.session.exportToHtml(outputPath)
-          : bundle.session.exportToJsonl(outputPath)
+      const path = await bundle.session.exportToJsonl(outputPath)
       return { ok: true, path }
     } catch (error) {
-      if (payload.format === "html" && payload.markdown !== undefined) {
-        try {
-          const { writeFile } = await import("node:fs/promises")
-          await writeFile(outputPath, markdownToFallbackHtml(payload.markdown), "utf8")
-          writeRuntimeLog("chat.export", "warn", {
-            fallback: "html-from-markdown",
-            outputPath,
-            originalError: error instanceof Error ? error.message : String(error),
-            projectPath: payload.projectPath,
-            sessionId: payload.sessionId,
-          })
-          return { ok: true, path: outputPath }
-        } catch (fallbackError) {
-          writeRuntimeLog("chat.export", "error", {
-            fallback: "html-from-markdown",
-            outputPath,
-            originalError: error instanceof Error ? error.message : String(error),
-            fallbackError:
-              fallbackError instanceof Error
-                ? fallbackError.message
-                : String(fallbackError),
-            projectPath: payload.projectPath,
-            sessionId: payload.sessionId,
-          })
-        }
-      }
       return {
         ok: false,
         error: error instanceof Error ? error.message : String(error),

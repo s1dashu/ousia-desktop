@@ -527,6 +527,12 @@ export function ChatArea({
     isFollowingLatestRef.current = isFollowingLatest
   }, [isFollowingLatest])
 
+  useLayoutEffect(() => {
+    olderHistoryScrollAnchorRef.current = null
+    isFollowingLatestRef.current = true
+    performLatestScroll("auto")
+  }, [currentProject?.path, currentSession?.id, performLatestScroll])
+
   useEffect(() => {
     return () => {
       clearProgrammaticScrollReset()
@@ -601,7 +607,7 @@ export function ChatArea({
   ])
 
   useLayoutEffect(() => {
-    if (!isFollowingLatest) {
+    if (!isFollowingLatestRef.current) {
       return
     }
     window.cancelAnimationFrame(followLatestFrameRef.current)
@@ -615,7 +621,13 @@ export function ChatArea({
     return () => {
       window.cancelAnimationFrame(followLatestFrameRef.current)
     }
-  }, [isAgentWorking, isFollowingLatest, items, performLatestScroll])
+  }, [
+    currentProject?.path,
+    currentSession?.id,
+    isAgentWorking,
+    items,
+    performLatestScroll,
+  ])
 
   useLayoutEffect(() => {
     const anchor = olderHistoryScrollAnchorRef.current
@@ -821,8 +833,12 @@ export function ChatArea({
   }
 
   function handleWheelCapture(event: WheelEvent<HTMLDivElement>) {
+    const isScrollingTowardHistory = event.deltaY < 0
     markCurrentSessionViewed()
-    handleManualScrollIntent(event.deltaY < 0)
+    handleManualScrollIntent(isScrollingTowardHistory)
+    if (isScrollingTowardHistory && event.currentTarget.scrollTop < 160) {
+      loadOlderHistory()
+    }
   }
 
   function handleChatKeyDownCapture(event: KeyboardEvent) {

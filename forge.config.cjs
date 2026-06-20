@@ -24,6 +24,8 @@ const hiddenDmgSupportFiles = [
   ".Trashes",
   ".VolumeIcon.icns",
 ]
+const piCodingAgentPackagePath =
+  "/node_modules/@earendil-works/pi-coding-agent"
 
 const macDmgConfig = {
   icon: macIcon,
@@ -81,9 +83,23 @@ module.exports = {
         return false
       }
 
-      const includedSubtrees = ["/.vite"]
+      const includedFiles = [
+        "/package.json",
+        "/node_modules",
+        "/node_modules/@earendil-works",
+        piCodingAgentPackagePath,
+        `${piCodingAgentPackagePath}/CHANGELOG.md`,
+        `${piCodingAgentPackagePath}/README.md`,
+        `${piCodingAgentPackagePath}/package.json`,
+      ]
+      const includedSubtrees = [
+        "/.vite",
+        `${piCodingAgentPackagePath}/dist`,
+        `${piCodingAgentPackagePath}/docs`,
+        `${piCodingAgentPackagePath}/examples`,
+      ]
 
-      if (file === "/package.json" || file === "/node_modules") {
+      if (includedFiles.includes(file)) {
         return false
       }
 
