@@ -1883,11 +1883,14 @@ export function ChatArea({
                     aria-label={t.chat.modelAndThinking}
                     className="flex h-7 max-w-64 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground"
                   >
-                    <span className="min-w-0 truncate text-foreground">
+                    <span className="hidden shrink-0 text-foreground @max-[520px]:inline">
+                      {t.chat.model}
+                    </span>
+                    <span className="min-w-0 truncate text-foreground @max-[520px]:hidden">
                       {selectedModelLabel}
                     </span>
                     {selectedModelPreset && selectedThinkingLevel !== "off" ? (
-                      <span className="shrink-0 text-muted-foreground">
+                      <span className="shrink-0 text-muted-foreground @max-[520px]:hidden">
                         {chatThinkingLabels[selectedThinkingLevel]}
                       </span>
                     ) : null}
