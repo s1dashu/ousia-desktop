@@ -209,21 +209,23 @@ function normalizeSidebarSectionOrder(
 }
 
 function ResizeHandle({
+  isActive = false,
   label,
   onPointerDown,
-  showLine = false,
 }: {
+  isActive?: boolean
   label: string
   onPointerDown: (event: PointerEvent<HTMLDivElement>) => void
-  showLine?: boolean
 }) {
   return (
-    <div
-      className={`relative z-10 flex shrink-0 flex-col ${showLine ? "w-px" : "w-0"}`}
-    >
+    <div className="group/resize relative z-10 -mx-1.5 flex w-3 shrink-0 flex-col">
       <div
         aria-hidden="true"
-        className={`pointer-events-none absolute inset-y-0 left-0 w-px ${showLine ? "bg-border/80" : "bg-transparent"}`}
+        className={`pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 rounded-full transition-[width,background-color,opacity] ${
+          isActive
+            ? "w-1 bg-ring/80"
+            : "w-px bg-transparent group-hover/resize:w-1 group-hover/resize:bg-ring/70 group-focus-within/resize:bg-ring/70"
+        }`}
       />
       <div
         aria-hidden="true"
@@ -237,7 +239,6 @@ function ResizeHandle({
         tabIndex={0}
       >
         <div className="window-no-drag absolute inset-y-0 left-1/2 w-5 -translate-x-1/2 cursor-col-resize" />
-        <div className="pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent transition-colors group-hover:bg-ring group-focus:bg-ring" />
       </div>
     </div>
   )
@@ -1580,6 +1581,7 @@ export function App() {
             style={{ width: "var(--ousia-sidebar-live-width)" }}
           />
           <ResizeHandle
+            isActive={isShellResizing}
             label={t.shell.resizeSidebar}
             onPointerDown={beginSidebarResize}
           />
