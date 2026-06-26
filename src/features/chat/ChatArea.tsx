@@ -1706,7 +1706,7 @@ export function ChatArea({
             ) : null}
             <div
               className={cn(
-                "ousia-chat-composer-ring ousia-squircle-corners relative z-10 rounded-[var(--ousia-chat-composer-radius)] border-[0.5px] border-foreground/10 bg-[var(--ousia-sidebar)] px-4 pt-3 pb-3 shadow-[var(--ousia-chat-composer-shadow)] transition-[border-color,box-shadow] focus-within:border-ring/30 focus-within:shadow-[var(--ousia-chat-composer-shadow-focus)] focus-within:ring-0 dark:border-white/10 dark:focus-within:border-white/20",
+                "ousia-chat-composer-ring ousia-squircle-corners relative z-10 rounded-[var(--ousia-chat-composer-radius)] border-[0.5px] border-[color:var(--ousia-chat-composer-border)] bg-[var(--ousia-sidebar)] px-4 pt-3 pb-3 shadow-[var(--ousia-chat-composer-shadow)] transition-[border-color,box-shadow] focus-within:border-[color:var(--ousia-chat-composer-border-focus)] focus-within:shadow-[var(--ousia-chat-composer-shadow-focus)] focus-within:ring-0",
                 visibleQueuedMessages.length && "-mt-8"
               )}
             >
