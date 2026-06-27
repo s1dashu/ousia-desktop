@@ -3,10 +3,11 @@ import {
   BrowserWindow,
   dialog,
   ipcMain,
+  shell,
   type OpenDialogOptions,
 } from "electron"
-import { mkdirSync } from "node:fs"
-import { basename } from "node:path"
+import { mkdirSync, statSync } from "node:fs"
+import { basename, resolve } from "node:path"
 
 import { createAgentConversationModule } from "./agent-conversations.js"
 import { configureOusiaAppPaths } from "./app-paths.js"
@@ -25,6 +26,8 @@ import type {
   OusiaChatSendPayload,
   OusiaChatToolPayloadPayload,
   OusiaDirectoryPickerOptions,
+  OusiaOpenDirectoryPayload,
+  OusiaOpenDirectoryResult,
   OusiaSelectDirectoryResult,
   OusiaWindowThemePayload,
 } from "./chat-types.js"
@@ -175,6 +178,38 @@ async function selectDirectory(
 ipcMain.handle(
   "ousia:directory:select",
   (_event, options?: OusiaDirectoryPickerOptions) => selectDirectory(options)
+)
+
+ipcMain.handle(
+  "ousia:directory:open-in-finder",
+  async (
+    _event,
+    payload: OusiaOpenDirectoryPayload
+  ): Promise<OusiaOpenDirectoryResult> => {
+    const requestedPath = payload.path.trim()
+    if (!requestedPath) {
+      return { ok: false, error: "项目目录为空。" }
+    }
+
+    const directoryPath = resolve(expandHomePath(requestedPath))
+    try {
+      if (!statSync(directoryPath).isDirectory()) {
+        return { ok: false, error: `不是目录：${directoryPath}` }
+      }
+    } catch {
+      return { ok: false, error: `目录不存在：${directoryPath}` }
+    }
+
+    const error = await shell.openPath(directoryPath)
+    if (error) {
+      writeRuntimeLog("directory.open-in-finder", "error", {
+        directoryPath,
+        error,
+      })
+      return { ok: false, error }
+    }
+    return { ok: true }
+  }
 )
 
 ipcMain.handle(

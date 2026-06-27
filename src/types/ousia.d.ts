@@ -23,6 +23,8 @@ import type {
   OusiaChatSendResult,
   OusiaDirectoryPickerOptions,
   OusiaModelRegistryResult,
+  OusiaOpenDirectoryPayload,
+  OusiaOpenDirectoryResult,
   OusiaOpenProjectResult,
   OusiaSelectDirectoryResult,
   OusiaWindowFullscreenEvent,
@@ -68,6 +70,9 @@ declare global {
       selectDirectory(
         options?: OusiaDirectoryPickerOptions
       ): Promise<OusiaSelectDirectoryResult>
+      openDirectoryInFinder(
+        payload: OusiaOpenDirectoryPayload
+      ): Promise<OusiaOpenDirectoryResult>
       getWindowFullscreenState(): Promise<OusiaWindowFullscreenEvent>
       getWindowZoomState(): Promise<OusiaWindowZoomEvent>
       setWindowTheme(payload: OusiaWindowThemePayload): void

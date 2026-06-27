@@ -713,6 +713,19 @@ export type OusiaSelectDirectoryResult =
       path: string
     }
 
+export type OusiaOpenDirectoryPayload = {
+  path: string
+}
+
+export type OusiaOpenDirectoryResult =
+  | {
+      ok: true
+    }
+  | {
+      ok: false
+      error: string
+    }
+
 export type OusiaWindowFullscreenEvent = {
   isFullscreen: boolean
 }

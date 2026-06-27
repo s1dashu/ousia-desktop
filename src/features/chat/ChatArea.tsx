@@ -250,6 +250,8 @@ export function ChatArea({
   const [isSending, setIsSending] = useState(false)
   const [isInterrupting, setIsInterrupting] = useState(false)
   const [isCompacting, setIsCompacting] = useState(false)
+  const [isOpeningProjectDirectory, setIsOpeningProjectDirectory] =
+    useState(false)
   const [isFollowingLatest, setIsFollowingLatest] = useState(true)
   const [openSessionMenuKey, setOpenSessionMenuKey] = useState<string | null>(
     null
@@ -1465,6 +1467,38 @@ export function ChatArea({
     }
   }
 
+  async function handleOpenProjectDirectory() {
+    if (isOpeningProjectDirectory) {
+      return
+    }
+    if (!window.ousia || !currentProject) {
+      onLocalEvent({
+        type: "error",
+        id: `open-project-directory-${Date.now()}`,
+        text: window.ousia ? t.chat.noSelection : t.chat.noElectron,
+        timestamp: new Date().toISOString(),
+      })
+      return
+    }
+
+    setIsOpeningProjectDirectory(true)
+    try {
+      const result = await window.ousia.openDirectoryInFinder({
+        path: currentProject.path,
+      })
+      if (!result.ok) {
+        onLocalEvent({
+          type: "error",
+          id: `open-project-directory-${Date.now()}`,
+          text: result.error || t.chat.openProjectDirectoryFailed,
+          timestamp: new Date().toISOString(),
+        })
+      }
+    } finally {
+      setIsOpeningProjectDirectory(false)
+    }
+  }
+
   async function handleExportSession(format: OusiaChatExportFormat) {
     if (!window.ousia || !currentProject || !currentSession) {
       return
@@ -1609,8 +1643,10 @@ export function ChatArea({
     >
       <ChatHeader
         copyStatus={copyStatus}
+        currentProject={currentProject}
         currentSession={currentSession}
         isCompacting={isCompacting}
+        isOpeningProjectDirectory={isOpeningProjectDirectory}
         isSessionMenuOpen={isSessionMenuOpen}
         isSidebarCollapsed={isSidebarCollapsed}
         isScrolled={isChatScrolled}
@@ -1618,6 +1654,7 @@ export function ChatArea({
         onCopySessionHistory={() => void handleCopySessionHistory()}
         onExportSession={(format) => void handleExportSession(format)}
         onManualCompact={() => void handleManualCompact()}
+        onOpenProjectDirectory={() => void handleOpenProjectDirectory()}
         onSessionMenuOpenChange={(open) => {
           setOpenSessionMenuKey(open ? currentSessionMenuKey : null)
           if (!open) {

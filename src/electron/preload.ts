@@ -23,6 +23,8 @@ import type {
   OusiaChatSendResult,
   OusiaDirectoryPickerOptions,
   OusiaModelRegistryResult,
+  OusiaOpenDirectoryPayload,
+  OusiaOpenDirectoryResult,
   OusiaOpenProjectResult,
   OusiaSelectDirectoryResult,
   OusiaWindowFullscreenEvent,
@@ -126,6 +128,11 @@ const api = {
     options?: OusiaDirectoryPickerOptions
   ): Promise<OusiaSelectDirectoryResult> {
     return ipcRenderer.invoke("ousia:directory:select", options)
+  },
+  openDirectoryInFinder(
+    payload: OusiaOpenDirectoryPayload
+  ): Promise<OusiaOpenDirectoryResult> {
+    return ipcRenderer.invoke("ousia:directory:open-in-finder", payload)
   },
   getWindowFullscreenState(): Promise<OusiaWindowFullscreenResult> {
     return ipcRenderer.invoke("ousia:window:fullscreen-state")
