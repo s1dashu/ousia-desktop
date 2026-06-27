@@ -31,7 +31,7 @@ function TooltipTrigger({
 function TooltipContent({
   className,
   side = "top",
-  sideOffset = 4,
+  sideOffset = 10,
   align = "center",
   children,
   ...props
@@ -44,13 +44,23 @@ function TooltipContent({
         side={side}
         sideOffset={sideOffset}
         className={cn(
-          "z-50 inline-flex w-fit max-w-xs origin-(--radix-tooltip-content-transform-origin) items-center gap-1.5 rounded-2xl bg-foreground px-3 py-1.5 text-xs text-background has-data-[slot=kbd]:pr-1.5 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 **:data-[slot=kbd]:relative **:data-[slot=kbd]:isolate **:data-[slot=kbd]:z-50 **:data-[slot=kbd]:rounded-4xl data-[state=delayed-open]:animate-in data-[state=delayed-open]:fade-in-0 data-[state=delayed-open]:zoom-in-95 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "ousia-rich-tooltip pointer-events-none z-50 flex w-fit max-w-xs origin-(--radix-tooltip-content-transform-origin) flex-col items-center justify-center overflow-hidden rounded-md border border-white/10 bg-neutral-950 px-4 py-2 text-xs text-white shadow-[0_14px_34px_-18px_rgba(0,0,0,0.82),0_4px_14px_-8px_rgba(0,0,0,0.72),inset_0_1px_0_rgba(255,255,255,0.1)] outline-none has-data-[slot=kbd]:pr-1.5 **:data-[slot=kbd]:relative **:data-[slot=kbd]:isolate **:data-[slot=kbd]:z-50 **:data-[slot=kbd]:rounded-4xl",
           className
         )}
         {...props}
       >
-        {children}
-        <TooltipPrimitive.Arrow className="z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px] bg-foreground fill-foreground data-[side=left]:translate-x-[-1.5px] data-[side=right]:translate-x-[1.5px]" />
+        <span className="relative z-30 min-w-0 whitespace-pre-wrap text-center text-xs leading-tight font-semibold text-white tabular-nums">
+          {children}
+        </span>
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-0 left-1/2 z-20 h-px w-1/4 -translate-x-1/2 bg-gradient-to-r from-transparent via-[var(--ring)] to-transparent"
+        />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-0 left-8 z-20 h-px w-2/5 bg-gradient-to-r from-transparent via-[var(--radix-scale-9)] to-transparent"
+        />
+        <TooltipPrimitive.Arrow className="z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px] bg-neutral-950 fill-neutral-950 data-[side=left]:translate-x-[-1.5px] data-[side=right]:translate-x-[1.5px]" />
       </TooltipPrimitive.Content>
     </TooltipPrimitive.Portal>
   )
