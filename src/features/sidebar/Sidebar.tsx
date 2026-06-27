@@ -15,7 +15,6 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
-  type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core"
 import {
@@ -68,7 +67,8 @@ const sidebarSelectedRowClass =
   "bg-white text-sidebar-accent-foreground shadow-[var(--ousia-sidebar-selected-shadow)] dark:bg-card"
 const sidebarGhostActionClass =
   "hover:bg-[var(--sidebar-accent)] hover:text-sidebar-accent-foreground"
-const sidebarDropTargetRowClass = "bg-white dark:bg-white dark:text-neutral-950"
+const sidebarDragPlaceholderRowClass =
+  "bg-white text-transparent shadow-[var(--ousia-sidebar-selected-shadow)] hover:bg-white focus-within:bg-white dark:bg-white dark:text-transparent dark:hover:bg-white dark:focus-within:bg-white [&>*]:opacity-0"
 const sidebarCompletionAccentClass = "bg-blue-500"
 const defaultSessionGroupId = "default"
 
@@ -125,7 +125,6 @@ type SortableSessionRowProps = {
   projectChild?: boolean
   selectedSessionId: string
   session: SessionRecord
-  isDropTarget?: boolean
   sessionHasUnreadCompletion: boolean
   sessionRunStatus: "idle" | "working"
   t: I18nMessages
@@ -176,26 +175,6 @@ function getSortableData(value: unknown): SidebarSortableData | null {
     label: data.label,
     ...(typeof data.groupId === "string" ? { groupId: data.groupId } : {}),
   }
-}
-
-function getSessionDropTargetId(
-  event: Pick<DragOverEvent, "active" | "over">
-): string | null {
-  const activeData = getSortableData(event.active.data.current)
-  const overData = getSortableData(event.over?.data.current)
-  if (
-    !activeData ||
-    !overData ||
-    !event.over ||
-    event.active.id === event.over.id ||
-    activeData.kind !== "session" ||
-    overData.kind !== "session" ||
-    activeData.groupId !== overData.groupId
-  ) {
-    return null
-  }
-
-  return String(event.over.id)
 }
 
 function isSidebarSectionId(value: string): value is OusiaSidebarSectionId {
@@ -268,7 +247,6 @@ function SortableSessionRow({
   projectChild,
   selectedSessionId,
   session,
-  isDropTarget,
   sessionHasUnreadCompletion,
   sessionRunStatus,
   t,
@@ -301,11 +279,10 @@ function SortableSessionRow({
       className={[
         "group/session ousia-squircle-corners font-radix-regular relative grid h-8.5 cursor-grab items-center rounded-[var(--ousia-sidebar-selected-radius)] text-sm active:cursor-grabbing",
         isSelectedSession ? sidebarSelectedRowClass : sidebarRowStateClass,
-        isDropTarget ? sidebarDropTargetRowClass : "",
         projectChild ? "gap-x-0 gap-y-1" : "gap-1",
         projectChild ? sidebarProjectSessionGridClass : sidebarSingleActionGridClass,
         sidebarSessionRowXClass,
-        isDragging ? "opacity-35" : "",
+        isDragging ? sidebarDragPlaceholderRowClass : "",
       ].join(" ")}
       onClick={() => {
         if (editingSessionId !== session.id) {
@@ -637,9 +614,6 @@ export function Sidebar({
     OusiaSidebarSectionId[]
   >([])
   const [dragPreview, setDragPreview] = useState<SidebarDragPreview | null>(null)
-  const [dropTargetSessionId, setDropTargetSessionId] = useState<string | null>(
-    null
-  )
   const editingInputRef = useRef<HTMLInputElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const defaultSessions = sessions.filter((session) => !session.projectId)
@@ -729,7 +703,6 @@ export function Sidebar({
 
     function clearDragPreview() {
       setDragPreview(null)
-      setDropTargetSessionId(null)
     }
 
     function handleVisibilityChange() {
@@ -785,15 +758,10 @@ export function Sidebar({
     if (!data) {
       return
     }
-    setDropTargetSessionId(null)
     setDragPreview({
       ...data,
       id: String(event.active.id),
     })
-  }
-
-  function handleDragOver(event: DragOverEvent) {
-    setDropTargetSessionId(getSessionDropTargetId(event))
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -801,7 +769,6 @@ export function Sidebar({
     const overData = getSortableData(event.over?.data.current)
     if (!activeData || !overData || !event.over || event.active.id === event.over.id) {
       setDragPreview(null)
-      setDropTargetSessionId(null)
       return
     }
     if (activeData.kind === "section" && overData.kind === "section") {
@@ -820,12 +787,10 @@ export function Sidebar({
       onReorderSessions(String(event.active.id), String(event.over.id))
     }
     setDragPreview(null)
-    setDropTargetSessionId(null)
   }
 
   function handleDragCancel() {
     setDragPreview(null)
-    setDropTargetSessionId(null)
   }
 
   function renderSessionRow(
@@ -848,7 +813,6 @@ export function Sidebar({
         projectChild={options.projectChild}
         selectedSessionId={selectedSessionId}
         session={session}
-        isDropTarget={dropTargetSessionId === session.id}
         sessionHasUnreadCompletion={unreadCompletedSessionIds.has(session.id)}
         sessionRunStatus={sessionRunStatusById[session.id] ?? "idle"}
         t={t}
@@ -1035,7 +999,6 @@ export function Sidebar({
           collisionDetection={closestCenter}
           onDragAbort={handleDragCancel}
           onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
         >
