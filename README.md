@@ -29,7 +29,7 @@
 
 <p align="center">
   <a href="https://github.com/s1dashu/ousia-desktop/releases/latest">
-    <img src="https://img.shields.io/badge/↓_Download_for_macOS_(Apple_Silicon)-000000?style=for-the-badge&logo=apple&logoColor=white&borderRadius=8" alt="Download for macOS">
+    <img src="./assets/download-button.svg" alt="Download for macOS" width="280" height="48"/>
   </a>
 </p>
 
