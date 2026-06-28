@@ -47,10 +47,12 @@ import {
   OUSIA_DESKTOP_LOG_PATH,
   writeRuntimeLog,
 } from "./runtime-logger.js"
+import { hydrateShellEnvironment } from "./shell-environment.js"
 import { createWindowHost } from "./window-host.js"
 
 configureOusiaAppPaths()
 installRuntimeLogger()
+hydrateShellEnvironment()
 
 const enabledTools = ["read", "write", "edit", "bash", "grep", "find", "ls"]
 

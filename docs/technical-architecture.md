@@ -88,6 +88,13 @@ it is opened; otherwise Ousia creates a new Pi session with that id. Provider
 API keys entered through Ousia are written into the local Pi `auth.json` as a
 single-provider merge, preserving unrelated existing Pi credentials.
 
+On macOS, apps launched from Finder or a DMG do not inherit terminal shell
+environment variables. During main-process startup, Ousia reads the user's shell
+environment and imports missing variables into the Electron process so Pi can
+see provider keys configured through shell startup files. Runtime logs record
+only imported variable names, not values. Persisting provider keys into Pi's
+`auth.json` remains the most stable configuration path.
+
 The app no longer installs an Ousia usage skill, filters a user `ousia` skill,
 or prepends an `ousia` CLI shim to the agent environment.
 
