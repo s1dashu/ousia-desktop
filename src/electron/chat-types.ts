@@ -105,7 +105,22 @@ export type OusiaAvailableModelProvider = {
   models: OusiaAvailableModel[]
 }
 
+export type OusiaModelProviderAuthSource =
+  | "stored"
+  | "runtime"
+  | "environment"
+  | "fallback"
+  | "models_json_key"
+  | "models_json_command"
+
+export type OusiaConfiguredModelProvider = {
+  id: string
+  authLabel?: string
+  authSource?: OusiaModelProviderAuthSource
+}
+
 export type OusiaModelRegistryResult = {
+  configuredProviders: OusiaConfiguredModelProvider[]
   configuredProviderIds: string[]
   providers: OusiaAvailableModelProvider[]
   error?: string

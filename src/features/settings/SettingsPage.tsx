@@ -74,6 +74,15 @@ const settingsLabelClass = "text-xs font-medium text-muted-foreground"
 const settingsHelpClass = "text-xs leading-5 text-muted-foreground"
 const settingsControlClass = "ousia-squircle-corners w-full rounded-xl"
 
+type ProviderRow = {
+  apiKey: string
+  authLabel?: string
+  authSource?: NonNullable<
+    OusiaModelRegistryResult["configuredProviders"][number]["authSource"]
+  >
+  id: string
+}
+
 export function SettingsPage({
   isSidebarCollapsed,
   isWindowFullscreen,
@@ -361,10 +370,41 @@ export function SettingsPage({
     })
   }
 
-  async function deleteProvider(providerId: string) {
-    const didRemove = await removeProviderCredential(providerId)
-    if (!didRemove) {
+  function providerAuthDescription(provider: ProviderRow) {
+    if (provider.authSource === "stored") {
+      return t.settings.configuredInPi
+    }
+    if (provider.authSource === "environment") {
+      return t.settings.configuredFromEnvironment(provider.authLabel)
+    }
+    if (provider.authSource === "models_json_key") {
+      return t.settings.configuredFromModelsJson
+    }
+    if (provider.authSource === "models_json_command") {
+      return t.settings.configuredFromModelsJsonCommand
+    }
+    if (provider.authSource === "fallback") {
+      return t.settings.configuredFromFallback
+    }
+    if (provider.authSource === "runtime") {
+      return t.settings.configuredFromRuntime
+    }
+    return t.settings.configuredInPi
+  }
+
+  async function deleteProvider(provider: ProviderRow) {
+    const providerId = provider.id
+    if (provider.authSource && provider.authSource !== "stored") {
+      setProviderError(
+        t.settings.providerRemoveUnavailable(providerAuthDescription(provider))
+      )
       return
+    }
+    if (provider.authSource === "stored") {
+      const didRemove = await removeProviderCredential(providerId)
+      if (!didRemove) {
+        return
+      }
     }
     const nextProviders = settings.modelProviders.filter(
       (provider) => provider.id !== providerId
@@ -415,14 +455,25 @@ export function SettingsPage({
     ...draft.modelProviders.map((provider) => provider.id),
     ...(modelRegistry?.configuredProviderIds ?? []),
   ])
-  const providerRows = [...configuredProviderIds]
+  const configuredProviderById = new Map(
+    (modelRegistry?.configuredProviders ?? []).map((provider) => [
+      provider.id,
+      provider,
+    ])
+  )
+  const providerRows: ProviderRow[] = [...configuredProviderIds]
     .filter(Boolean)
-    .map((providerId) => ({
-      id: providerId,
-      apiKey:
-        draft.modelProviders.find((provider) => provider.id === providerId)
-          ?.apiKey ?? "",
-    }))
+    .map((providerId) => {
+      const configuredProvider = configuredProviderById.get(providerId)
+      return {
+        id: providerId,
+        apiKey:
+          draft.modelProviders.find((provider) => provider.id === providerId)
+            ?.apiKey ?? "",
+        authLabel: configuredProvider?.authLabel,
+        authSource: configuredProvider?.authSource,
+      }
+    })
     .sort((left, right) =>
       providerLabel(modelRegistry, left.id).localeCompare(
         providerLabel(modelRegistry, right.id),
@@ -837,6 +888,8 @@ export function SettingsPage({
                   const isProviderApiKeyVisible =
                     visibleProviderApiKeyIds.has(provider.id)
                   const isProviderSaving = savingProviderIds.has(provider.id)
+                  const providerAuthPlaceholder =
+                    providerAuthDescription(provider)
 
                   return (
                     <div
@@ -863,7 +916,7 @@ export function SettingsPage({
                               event.currentTarget.blur()
                             }
                           }}
-                          placeholder={t.settings.configuredInPi}
+                          placeholder={providerAuthPlaceholder}
                           type={
                             providerHasApiKey && isProviderApiKeyVisible
                               ? "text"
@@ -900,7 +953,7 @@ export function SettingsPage({
                         className="ousia-squircle-corners justify-self-end rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground active:scale-[0.96]"
                         aria-label={`${t.app.delete} ${provider.id}`}
                         disabled={isProviderSaving}
-                        onClick={() => void deleteProvider(provider.id)}
+                        onClick={() => void deleteProvider(provider)}
                       >
                         <Trash2 size={18} />
                       </Button>

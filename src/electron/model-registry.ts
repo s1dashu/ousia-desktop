@@ -5,7 +5,9 @@ import { join } from "node:path"
 
 import type {
   OusiaAvailableModel,
+  OusiaConfiguredModelProvider,
   OusiaModelRegistryResult,
+  OusiaModelProviderAuthSource,
   OusiaThinkingLevel,
 } from "./chat-types.js"
 import { isDeprecatedProviderModelId } from "./model-compat.js"
@@ -20,6 +22,22 @@ function toOusiaThinkingLevels(levels: string[]): OusiaThinkingLevel[] {
   return levels.filter((level): level is OusiaThinkingLevel =>
     allowed.has(level)
   )
+}
+
+function toOusiaAuthSource(
+  source: ReturnType<ModelRegistry["getProviderAuthStatus"]>["source"]
+): OusiaModelProviderAuthSource | undefined {
+  if (
+    source === "stored" ||
+    source === "runtime" ||
+    source === "environment" ||
+    source === "fallback" ||
+    source === "models_json_key" ||
+    source === "models_json_command"
+  ) {
+    return source
+  }
+  return undefined
 }
 
 export async function listPiModels(): Promise<OusiaModelRegistryResult> {
@@ -85,15 +103,27 @@ export async function listPiModels(): Promise<OusiaModelRegistryResult> {
       a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
     )
 
+  const configuredProviderIds = [
+    ...new Set(
+      modelRegistry
+        .getAvailable()
+        .map((model) => model.provider.trim())
+        .filter(Boolean)
+    ),
+  ].sort()
+  const configuredProviders: OusiaConfiguredModelProvider[] =
+    configuredProviderIds.map((providerId) => {
+      const authStatus = modelRegistry.getProviderAuthStatus(providerId)
+      return {
+        id: providerId,
+        authLabel: authStatus.label,
+        authSource: toOusiaAuthSource(authStatus.source),
+      }
+    })
+
   return {
-    configuredProviderIds: [
-      ...new Set(
-        modelRegistry
-          .getAvailable()
-          .map((model) => model.provider.trim())
-          .filter(Boolean)
-      ),
-    ].sort(),
+    configuredProviderIds,
+    configuredProviders,
     providers,
     error: modelRegistry.getError(),
   }

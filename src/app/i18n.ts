@@ -68,8 +68,16 @@ export const messages = {
       chooseProvider: "选择供应商",
       apiKeyRequired: "API Key 必填。",
       configuredInPi: "已在 Pi 配置中保存",
+      configuredFromEnvironment: (label?: string) =>
+        label ? `来自环境变量：${label}` : "来自环境变量",
+      configuredFromFallback: "来自自定义供应商配置",
+      configuredFromModelsJson: "来自 Pi models.json",
+      configuredFromModelsJsonCommand: "来自 Pi models.json 命令",
+      configuredFromRuntime: "来自运行时配置",
       providerSaveFailed: "保存供应商失败。",
       providerRemoveFailed: "删除供应商失败。",
+      providerRemoveUnavailable: (source: string) =>
+        `${source}，无法在 Ousia 中删除。请移除对应环境变量或 Pi models.json 配置。`,
       saving: "正在保存...",
       showApiKey: "显示 API Key",
       hideApiKey: "隐藏 API Key",
@@ -249,8 +257,16 @@ export const messages = {
       chooseProvider: "Choose provider",
       apiKeyRequired: "API Key is required.",
       configuredInPi: "Saved in Pi config",
+      configuredFromEnvironment: (label?: string) =>
+        label ? `From environment: ${label}` : "From environment",
+      configuredFromFallback: "From custom provider config",
+      configuredFromModelsJson: "From Pi models.json",
+      configuredFromModelsJsonCommand: "From Pi models.json command",
+      configuredFromRuntime: "From runtime config",
       providerSaveFailed: "Failed to save provider.",
       providerRemoveFailed: "Failed to remove provider.",
+      providerRemoveUnavailable: (source: string) =>
+        `${source}; Ousia cannot delete it. Remove the matching environment variable or Pi models.json entry.`,
       saving: "Saving...",
       showApiKey: "Show API Key",
       hideApiKey: "Hide API Key",
