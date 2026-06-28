@@ -282,6 +282,7 @@ export function App() {
   const [isInstallingPi, setIsInstallingPi] = useState(false)
   const [isSavingOnboardingProvider, setIsSavingOnboardingProvider] =
     useState(false)
+  const [isOnboardingDebugOpen, setIsOnboardingDebugOpen] = useState(false)
   const [onboardingCompleted, setOnboardingCompleted] = useState(
     initialState.onboardingCompleted
   )
@@ -551,11 +552,18 @@ export function App() {
   )
 
   const handleCompleteOnboarding = useCallback(() => {
+    setIsOnboardingDebugOpen(false)
     setOnboardingCompleted(true)
     if (isAppStateLoaded) {
       void saveAppState(createAppStateSnapshot(settings, true))
     }
   }, [createAppStateSnapshot, isAppStateLoaded, settings])
+
+  const handleOpenOnboarding = useCallback(() => {
+    setIsOnboardingDebugOpen(true)
+    void refreshModelRegistry()
+    void refreshPiEnvironment()
+  }, [refreshModelRegistry, refreshPiEnvironment])
   const flushPendingChatEvents = useCallback(() => {
     pendingChatEventsFrameRef.current = 0
     const pendingEvents = pendingChatEventsRef.current
@@ -1655,7 +1663,11 @@ export function App() {
         onInstallPi={handleInstallPi}
         onRefreshPi={() => void refreshPiEnvironment()}
         onSaveProvider={handleSaveOnboardingProvider}
-        open={Boolean(window.ousia && isAppStateLoaded && !onboardingCompleted)}
+        open={Boolean(
+          window.ousia &&
+            isAppStateLoaded &&
+            (!onboardingCompleted || isOnboardingDebugOpen)
+        )}
         piEnvironment={piEnvironment}
         settings={settings}
       />
@@ -1710,6 +1722,7 @@ export function App() {
               modelRegistry={modelRegistry}
               settings={settings}
               onClose={() => setIsSettingsOpen(false)}
+              onOpenOnboarding={handleOpenOnboarding}
               onSettingsChange={handleSettingsChange}
             />
           ) : (

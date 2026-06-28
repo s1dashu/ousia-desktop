@@ -4,6 +4,7 @@ import {
   EyeOff,
   FolderOpen,
   Plus,
+  Sparkles,
   Trash2,
   X,
 } from "@/components/icons/huge-icons"
@@ -61,6 +62,7 @@ type SettingsPageProps = {
   isWindowFullscreen: boolean
   modelRegistry: OusiaModelRegistryResult | undefined
   onClose: () => void
+  onOpenOnboarding: () => void
   onSettingsChange: (settings: AppSettings) => void
   settings: AppSettings
 }
@@ -78,6 +80,7 @@ export function SettingsPage({
   isWindowFullscreen,
   modelRegistry,
   onClose,
+  onOpenOnboarding,
   onSettingsChange,
   settings,
 }: SettingsPageProps) {
@@ -890,6 +893,26 @@ export function SettingsPage({
 
           <section className={settingsSectionClass}>
             <h2 className="text-sm font-semibold">{t.settings.advanced}</h2>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className={settingsLabelClass}>
+                  {t.settings.reopenOnboarding}
+                </div>
+                <div className={settingsHelpClass}>
+                  {t.settings.reopenOnboardingHelp}
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="ousia-squircle-corners h-9 shrink-0 rounded-xl border-[0.5px] border-foreground/10 bg-background/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.24)] hover:bg-background dark:bg-input/45 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] dark:hover:bg-input/60"
+                onClick={onOpenOnboarding}
+              >
+                <Sparkles size={18} />
+                {t.settings.reopenOnboarding}
+              </Button>
+            </div>
             <div className={settingsFieldClass}>
               <label className={settingsLabelClass}>
                 {t.settings.defaultWorkDir}

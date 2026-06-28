@@ -30,6 +30,8 @@ export const messages = {
     settings: {
       general: "通用设置",
       advanced: "高级设置",
+      reopenOnboarding: "重新打开首次配置",
+      reopenOnboardingHelp: "用于开发调试，可重新运行 Pi 检测和模型供应商配置流程。",
       defaultWorkDir: "默认工作目录",
       defaultWorkDirPrompt: "默认工作目录",
       defaultWorkDirHelp: "非项目会话和新建项目默认从该目录开始。",
@@ -231,6 +233,8 @@ export const messages = {
     settings: {
       general: "General",
       advanced: "Advanced",
+      reopenOnboarding: "Reopen onboarding",
+      reopenOnboardingHelp: "For development debugging: run Pi detection and model provider setup again.",
       defaultWorkDir: "Default workspace folder",
       defaultWorkDirPrompt: "Default workspace folder",
       defaultWorkDirHelp: "Non-project chats and new projects start from this folder by default.",
