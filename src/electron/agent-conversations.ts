@@ -74,6 +74,7 @@ type AgentStreamState = {
   thinkingId: string
   showThinking: boolean
   currentAssistantMessageId: string
+  lastErrorText: string
   toolDisplayIdsByContentIndex: Map<number, string>
   toolDisplayIdsByProviderId: Map<string, string>
   startedToolIds: Set<string>
@@ -110,6 +111,7 @@ function createStreamState(thinkingLevel: string | undefined = "off"): AgentStre
     thinkingId: "",
     showThinking: shouldShowThinkingForLevel(thinkingLevel),
     currentAssistantMessageId: "",
+    lastErrorText: "",
     toolDisplayIdsByContentIndex: new Map(),
     toolDisplayIdsByProviderId: new Map(),
     startedToolIds: new Set(),
@@ -158,6 +160,40 @@ function stringifyUnknown(value: unknown) {
   } catch {
     return String(value)
   }
+}
+
+function errorTextFromUnknown(
+  value: unknown,
+  fallback = "智能体响应失败。"
+): string {
+  if (value === undefined || value === null) {
+    return fallback
+  }
+  if (value instanceof Error) {
+    return value.message || fallback
+  }
+  if (typeof value === "string") {
+    return value.trim() || fallback
+  }
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>
+    for (const key of ["errorMessage", "message", "reason", "detail"]) {
+      const field = record[key]
+      if (typeof field === "string" && field.trim()) {
+        return field.trim()
+      }
+    }
+    for (const key of ["error", "cause"]) {
+      if (key in record) {
+        const text: string = errorTextFromUnknown(record[key], "")
+        if (text) {
+          return text
+        }
+      }
+    }
+    return stringifyUnknown(value) ?? fallback
+  }
+  return String(value)
 }
 
 function previewText(value: string, maxLength = 180) {
@@ -305,7 +341,8 @@ async function configureSessionBundle(
   thinkingLevel: OusiaThinkingLevel,
   agentMode?: OusiaAgentMode,
   customAgentTools?: OusiaAgentToolName[],
-  autoCompactContext?: boolean
+  autoCompactContext?: boolean,
+  autoRetryOnFailure?: boolean
 ) {
   const model = normalizeModelSettings(modelSettings)
   if (!model.provider || !model.modelId) {
@@ -325,6 +362,9 @@ async function configureSessionBundle(
   )
   if (typeof autoCompactContext === "boolean") {
     bundle.session.setAutoCompactionEnabled(autoCompactContext)
+  }
+  if (typeof autoRetryOnFailure === "boolean") {
+    bundle.session.setAutoRetryEnabled(autoRetryOnFailure)
   }
 }
 
@@ -887,7 +927,7 @@ export function createAgentConversationModule({
       })
       return {
         ok: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: errorTextFromUnknown(error, "创建分支失败。"),
       }
     }
   }
@@ -900,8 +940,21 @@ export function createAgentConversationModule({
     const timestamp = now()
     const state = streamState.get(key) ?? createStreamState()
     streamState.set(key, state)
+    const emitError = (text: string) => {
+      state.lastErrorText = text
+      emitChatEvent(
+        {
+          type: "error",
+          id: randomId("error"),
+          text,
+          timestamp,
+        },
+        context
+      )
+    }
 
     if (event.type === "agent_start") {
+      state.lastErrorText = ""
       emitChatEvent(
         { type: "run_status", status: "starting", timestamp },
         context
@@ -929,6 +982,13 @@ export function createAgentConversationModule({
     }
     if (event.type === "agent_end") {
       finishActiveTools(state, context, emitChatEvent, timestamp)
+      if (event.willRetry) {
+        emitChatEvent(
+          { type: "run_status", status: "running", timestamp },
+          context
+        )
+        return
+      }
       emitChatEvent(
         { type: "run_status", status: "finished", timestamp },
         context
@@ -964,17 +1024,11 @@ export function createAgentConversationModule({
         finishActiveTools(state, context, emitChatEvent, timestamp)
       }
       if (message.role === "assistant" && message.stopReason === "error") {
-        emitChatEvent(
-          {
-            type: "error",
-            id: randomId("error"),
-            text:
-              typeof message.errorMessage === "string"
-                ? message.errorMessage
-                : "智能体响应失败。",
-            timestamp,
-          },
-          context
+        emitError(
+          errorTextFromUnknown(
+            message.errorMessage ?? message.error ?? message,
+            "智能体响应失败。"
+          )
         )
         emitChatEvent(
           { type: "run_status", status: "error", timestamp },
@@ -1048,6 +1102,24 @@ export function createAgentConversationModule({
       state.activeToolIds.delete(displayId)
       return
     }
+    if (event.type === "auto_retry_end") {
+      if (!event.success) {
+        const text = errorTextFromUnknown(
+          event.finalError,
+          "智能体响应失败。"
+        )
+        if (text !== state.lastErrorText) {
+          emitError(text)
+        }
+        emitChatEvent(
+          { type: "run_status", status: "error", timestamp },
+          context
+        )
+      } else {
+        state.lastErrorText = ""
+      }
+      return
+    }
     if (event.type !== "message_update") {
       return
     }
@@ -1064,9 +1136,7 @@ export function createAgentConversationModule({
           contentIndex?: number
           delta?: string
           content?: string
-          error?: {
-            errorMessage?: string
-          }
+          error?: unknown
         }
       }
     ).assistantMessageEvent
@@ -1204,15 +1274,7 @@ export function createAgentConversationModule({
       return
     }
     if (messageEvent.type === "error") {
-      emitChatEvent(
-        {
-          type: "error",
-          id: randomId("error"),
-          text: messageEvent.error?.errorMessage ?? "智能体响应失败。",
-          timestamp,
-        },
-        context
-      )
+      emitError(errorTextFromUnknown(messageEvent.error, "智能体响应失败。"))
       emitChatEvent({ type: "run_status", status: "error", timestamp }, context)
     }
   }
@@ -1427,7 +1489,7 @@ export function createAgentConversationModule({
     } catch (error) {
       return {
         ok: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: errorTextFromUnknown(error, "工具调用详情加载失败。"),
       }
     }
   }
@@ -1495,11 +1557,12 @@ export function createAgentConversationModule({
           .prompt(text || "请查看附件图片。", { images, source: "interactive" })
           .catch((error) => {
             const timestamp = now()
+            const text = errorTextFromUnknown(error)
             emitChatEvent(
               {
                 type: "error",
                 id: randomId("error"),
-                text: error instanceof Error ? error.message : String(error),
+                text,
                 timestamp,
               },
               context
@@ -1513,11 +1576,12 @@ export function createAgentConversationModule({
       return { ok: true }
     } catch (error) {
       const timestamp = now()
+      const text = errorTextFromUnknown(error)
       emitChatEvent(
         {
           type: "error",
           id: randomId("error"),
-          text: error instanceof Error ? error.message : String(error),
+          text,
           timestamp,
         },
         context
@@ -1526,7 +1590,7 @@ export function createAgentConversationModule({
         { type: "run_status", status: "error", timestamp },
         context
       )
-      return { ok: false }
+      return { ok: false, error: text }
     }
   }
 
@@ -1571,11 +1635,12 @@ export function createAgentConversationModule({
         void session.prompt(combinedMessage, { source: "interactive" }).catch(
           (error) => {
             const timestamp = now()
+            const text = errorTextFromUnknown(error)
             emitChatEvent(
               {
                 type: "error",
                 id: randomId("error"),
-                text: error instanceof Error ? error.message : String(error),
+                text,
                 timestamp,
               },
               context
@@ -1589,11 +1654,12 @@ export function createAgentConversationModule({
       }
       return { ok: true }
     } catch (error) {
+      const text = errorTextFromUnknown(error)
       emitChatEvent(
         {
           type: "error",
           id: randomId("error"),
-          text: error instanceof Error ? error.message : String(error),
+          text,
           timestamp: now(),
         },
         context
@@ -1615,7 +1681,7 @@ export function createAgentConversationModule({
     } catch (error) {
       return {
         ok: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: errorTextFromUnknown(error, "上下文信息读取失败。"),
       }
     }
   }
@@ -1634,7 +1700,7 @@ export function createAgentConversationModule({
     } catch (error) {
       return {
         ok: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: errorTextFromUnknown(error, "清空队列失败。"),
       }
     }
   }
@@ -1669,7 +1735,7 @@ export function createAgentConversationModule({
     } catch (error) {
       return {
         ok: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: errorTextFromUnknown(error, "手动压缩失败。"),
       }
     }
   }
@@ -1703,14 +1769,15 @@ export function createAgentConversationModule({
         payload.thinkingLevel,
         payload.agentMode,
         payload.customAgentTools,
-        payload.autoCompactContext
+        payload.autoCompactContext,
+        payload.autoRetryOnFailure
       )
       const path = await bundle.session.exportToJsonl(outputPath)
       return { ok: true, path }
     } catch (error) {
       return {
         ok: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: errorTextFromUnknown(error, "导出会话失败。"),
       }
     }
   }

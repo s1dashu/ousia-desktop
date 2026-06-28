@@ -30,6 +30,8 @@ import type {
   OusiaPiProviderCredentialPayload,
   OusiaPiProviderCredentialRemovalPayload,
   OusiaPiProviderCredentialResult,
+  OusiaPiRetrySettingsPayload,
+  OusiaPiRetrySettingsResult,
   OusiaSelectDirectoryResult,
   OusiaWindowFullscreenEvent,
   OusiaWindowThemePayload,
@@ -75,6 +77,9 @@ declare global {
       removePiProviderCredential(
         payload: OusiaPiProviderCredentialRemovalPayload
       ): Promise<OusiaPiProviderCredentialResult>
+      savePiRetrySettings(
+        payload: OusiaPiRetrySettingsPayload
+      ): Promise<OusiaPiRetrySettingsResult>
       openProjectDirectory(
         options?: OusiaDirectoryPickerOptions
       ): Promise<OusiaOpenProjectResult>

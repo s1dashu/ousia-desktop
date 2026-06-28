@@ -30,6 +30,8 @@ import type {
   OusiaPiProviderCredentialPayload,
   OusiaPiProviderCredentialRemovalPayload,
   OusiaPiProviderCredentialResult,
+  OusiaPiRetrySettingsPayload,
+  OusiaPiRetrySettingsResult,
   OusiaSelectDirectoryResult,
   OusiaWindowFullscreenEvent,
   OusiaWindowFullscreenResult,
@@ -135,6 +137,11 @@ const api = {
     payload: OusiaPiProviderCredentialRemovalPayload
   ): Promise<OusiaPiProviderCredentialResult> {
     return ipcRenderer.invoke("ousia:pi:provider-credential:remove", payload)
+  },
+  savePiRetrySettings(
+    payload: OusiaPiRetrySettingsPayload
+  ): Promise<OusiaPiRetrySettingsResult> {
+    return ipcRenderer.invoke("ousia:pi:retry-settings", payload)
   },
   openProjectDirectory(
     options?: OusiaDirectoryPickerOptions

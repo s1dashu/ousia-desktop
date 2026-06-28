@@ -448,12 +448,26 @@ export function App() {
   const handleSettingsChange = useCallback(
     (nextSettings: AppSettings) => {
       const normalizedSettings = normalizeOusiaAppSettings(nextSettings)
+      if (
+        normalizedSettings.autoRetryOnFailure !==
+        settings.autoRetryOnFailure
+      ) {
+        void window.ousia
+          ?.savePiRetrySettings({
+            autoRetryOnFailure: normalizedSettings.autoRetryOnFailure,
+          })
+          .then((result) => {
+            if (!result.ok) {
+              console.warn(result.error)
+            }
+          })
+      }
       setSettings(normalizedSettings)
       if (isAppStateLoaded) {
         void saveAppState(createAppStateSnapshot(normalizedSettings))
       }
     },
-    [createAppStateSnapshot, isAppStateLoaded]
+    [createAppStateSnapshot, isAppStateLoaded, settings.autoRetryOnFailure]
   )
 
   const refreshModelRegistry = useCallback(async () => {

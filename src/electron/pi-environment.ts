@@ -1,12 +1,14 @@
 import "./pi-package-dir.js"
 
 import { existsSync, mkdirSync, readFileSync } from "node:fs"
+import { homedir } from "node:os"
 import { join } from "node:path"
 
 import {
   AuthStorage,
   getAgentDir,
   ModelRegistry,
+  SettingsManager,
 } from "@earendil-works/pi-coding-agent"
 
 import type {
@@ -14,6 +16,8 @@ import type {
   OusiaPiProviderCredentialPayload,
   OusiaPiProviderCredentialRemovalPayload,
   OusiaPiProviderCredentialResult,
+  OusiaPiRetrySettingsPayload,
+  OusiaPiRetrySettingsResult,
 } from "./chat-types.js"
 import { isDeprecatedProviderModelId } from "./model-compat.js"
 
@@ -45,6 +49,36 @@ export function createReadOnlyPiAuthStorage(agentDir: string) {
 export function createWritablePiAuthStorage(agentDir: string) {
   mkdirSync(agentDir, { recursive: true })
   return AuthStorage.create(join(agentDir, "auth.json"))
+}
+
+function createPiSettingsManager() {
+  const agentDir = resolvePiAgentDir()
+  mkdirSync(agentDir, { recursive: true })
+  return SettingsManager.create(homedir(), agentDir)
+}
+
+export function readPiAutoRetryOnFailure() {
+  const settingsManager = createPiSettingsManager()
+  const globalSettings = settingsManager.getGlobalSettings()
+  return globalSettings.retry?.enabled ?? true
+}
+
+export async function savePiRetrySettings(
+  payload: OusiaPiRetrySettingsPayload
+): Promise<OusiaPiRetrySettingsResult> {
+  try {
+    const settingsManager = createPiSettingsManager()
+    settingsManager.setRetryEnabled(payload.autoRetryOnFailure)
+    return {
+      ok: true,
+      autoRetryOnFailure: payload.autoRetryOnFailure,
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    }
+  }
 }
 
 function configuredProvidersFromRegistry(modelRegistry: ModelRegistry) {

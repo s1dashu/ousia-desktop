@@ -30,6 +30,7 @@ import type {
   OusiaOpenDirectoryResult,
   OusiaPiProviderCredentialPayload,
   OusiaPiProviderCredentialRemovalPayload,
+  OusiaPiRetrySettingsPayload,
   OusiaSelectDirectoryResult,
   OusiaWindowThemePayload,
 } from "./chat-types.js"
@@ -39,6 +40,7 @@ import {
   checkPiEnvironment,
   removePiProviderCredential,
   savePiProviderCredential,
+  savePiRetrySettings,
 } from "./pi-environment.js"
 import {
   installRuntimeLogger,
@@ -169,6 +171,11 @@ ipcMain.handle(
   "ousia:pi:provider-credential:remove",
   (_event, payload: OusiaPiProviderCredentialRemovalPayload) =>
     removePiProviderCredential(payload)
+)
+
+ipcMain.handle(
+  "ousia:pi:retry-settings",
+  (_event, payload: OusiaPiRetrySettingsPayload) => savePiRetrySettings(payload)
 )
 
 async function selectDirectory(

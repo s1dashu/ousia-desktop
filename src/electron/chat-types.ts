@@ -76,6 +76,7 @@ export type OusiaAppSettings = {
   agentMode: OusiaAgentMode
   customAgentTools: OusiaAgentToolName[]
   autoCompactContext: boolean
+  autoRetryOnFailure: boolean
   showContextUsage: boolean
   continueQueuedMessagesAfterInterrupt: boolean
   thinkingLevel: OusiaThinkingLevel
@@ -152,6 +153,16 @@ export type OusiaPiProviderCredentialResult = {
   status?: OusiaPiEnvironmentStatus
 }
 
+export type OusiaPiRetrySettingsPayload = {
+  autoRetryOnFailure: boolean
+}
+
+export type OusiaPiRetrySettingsResult = {
+  autoRetryOnFailure?: boolean
+  error?: string
+  ok: boolean
+}
+
 export type OusiaAppSelectionState = {
   expandedProjectIds: string[]
   selectedSessionId: string
@@ -207,6 +218,7 @@ export const defaultOusiaAppSettings: OusiaAppSettings = {
   agentMode: "standard",
   customAgentTools: ["read", "write", "edit", "bash", "grep", "find", "ls"],
   autoCompactContext: true,
+  autoRetryOnFailure: true,
   showContextUsage: false,
   continueQueuedMessagesAfterInterrupt: true,
   thinkingLevel: "medium",
@@ -324,6 +336,10 @@ export function normalizeOusiaAppSettings(
       typeof merged.autoCompactContext === "boolean"
         ? merged.autoCompactContext
         : defaultOusiaAppSettings.autoCompactContext,
+    autoRetryOnFailure:
+      typeof merged.autoRetryOnFailure === "boolean"
+        ? merged.autoRetryOnFailure
+        : defaultOusiaAppSettings.autoRetryOnFailure,
     showContextUsage:
       typeof merged.showContextUsage === "boolean"
         ? merged.showContextUsage
@@ -589,6 +605,7 @@ export type OusiaChatEvent = {
 )
 
 export type OusiaChatSendResult = {
+  error?: string
   ok: boolean
 }
 
@@ -624,6 +641,7 @@ export type OusiaChatCompactPayload = OusiaChatContext & {
   agentMode?: OusiaAgentMode
   customAgentTools?: OusiaAgentToolName[]
   autoCompactContext?: boolean
+  autoRetryOnFailure?: boolean
   thinkingLevel: OusiaThinkingLevel
   model: OusiaModelSettings
 }
@@ -640,6 +658,7 @@ export type OusiaChatSendPayload = OusiaChatContext & {
   agentMode?: OusiaAgentMode
   customAgentTools?: OusiaAgentToolName[]
   autoCompactContext?: boolean
+  autoRetryOnFailure?: boolean
   thinkingLevel: OusiaThinkingLevel
   model: OusiaModelSettings
 }
@@ -696,6 +715,7 @@ export type OusiaChatExportPayload = OusiaChatContext & {
   agentMode?: OusiaAgentMode
   customAgentTools?: OusiaAgentToolName[]
   autoCompactContext?: boolean
+  autoRetryOnFailure?: boolean
   thinkingLevel: OusiaThinkingLevel
   model: OusiaModelSettings
 }

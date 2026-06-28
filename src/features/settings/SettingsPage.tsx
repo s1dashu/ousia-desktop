@@ -1110,6 +1110,38 @@ export function SettingsPage({
                 {t.settings.defaultWorkDirHelp}
               </div>
             </div>
+            <div className={settingsFieldClass}>
+              <div className="flex items-center justify-between gap-3">
+                <span className={settingsLabelClass}>
+                  {t.settings.autoRetryOnFailure}
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={draft.autoRetryOnFailure}
+                  className={cn(
+                    "relative h-5 w-9 shrink-0 rounded-full transition-colors",
+                    draft.autoRetryOnFailure ? "bg-foreground" : "bg-muted"
+                  )}
+                  onClick={() =>
+                    applySettings({
+                      autoRetryOnFailure: !draft.autoRetryOnFailure,
+                    })
+                  }
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "absolute top-0.5 size-4 rounded-full bg-background shadow-sm transition-[left]",
+                      draft.autoRetryOnFailure ? "left-[18px]" : "left-0.5"
+                    )}
+                  />
+                </button>
+              </div>
+              <div className={settingsHelpClass}>
+                {t.settings.autoRetryOnFailureHelp}
+              </div>
+            </div>
           </section>
         </div>
       </div>

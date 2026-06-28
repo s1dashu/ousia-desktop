@@ -30,6 +30,7 @@ import {
   MAIN_WINDOW_MIN_HEIGHT,
   MAIN_WINDOW_MIN_WIDTH,
 } from "./window-constants.js"
+import { readPiAutoRetryOnFailure } from "./pi-environment.js"
 
 const appStateFileName = "app-state.json"
 let appStateWriteQueue: Promise<void> = Promise.resolve()
@@ -109,10 +110,22 @@ function normalizeWindowState(value: unknown): OusiaWindowState {
 }
 
 function normalizeSettings(settings: OusiaAppSettings): OusiaAppSettings {
-  const nextSettings = normalizeOusiaAppSettings({
+  let nextSettings = normalizeOusiaAppSettings({
     ...defaultOusiaAppSettings,
     ...settings,
   })
+
+  try {
+    nextSettings = {
+      ...nextSettings,
+      autoRetryOnFailure: readPiAutoRetryOnFailure(),
+    }
+  } catch (error) {
+    writeRuntimeLog("app-state", "warn", {
+      message: "Failed to read Pi retry setting",
+      error: error instanceof Error ? error.message : String(error),
+    })
+  }
 
   migrateLegacyDefaultWorkDir()
 
