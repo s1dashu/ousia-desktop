@@ -74,8 +74,16 @@ Main process entrypoints:
 ## Agent Sessions
 
 Each chat request includes `projectPath` and `sessionId`. Electron main expands
-the project path, creates a Pi agent dir under `userData/pi-agent`, and stores
-conversation history under `userData/sessions/<project>/<session>`.
+the project path, resolves the selected Pi config source, and stores
+conversation history under `userData/sessions/<project>/<session>`. The default
+Pi config source is the user's local Pi config (`~/.pi/agent`, honoring
+`PI_CODING_AGENT_DIR`); Ousia can still use its isolated `userData/pi-agent`
+directory when configured to do so.
+
+First launch shows an onboarding dialog. It checks for the local `pi` CLI,
+offers one-click installation when missing, checks whether the selected Pi
+config already has model credentials, and saves new provider API keys into the
+selected Pi config.
 
 The app no longer installs an Ousia usage skill, filters a user `ousia` skill,
 or prepends an `ousia` CLI shim to the agent environment.

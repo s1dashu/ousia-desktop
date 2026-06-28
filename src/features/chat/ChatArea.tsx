@@ -334,7 +334,8 @@ export function ChatArea({
   const canSaveProviderKey =
     Boolean(providerKeyDialogProvider) && Boolean(providerKeyDialogApiKey.trim())
   const hasSelectedProviderApiKey = Boolean(
-    getOusiaModelProviderApiKey(settings)?.trim()
+    settings.piConfigSource === "local" ||
+      getOusiaModelProviderApiKey(settings)?.trim()
   )
   const visibleChatItems = useMemo(() => {
     if (!hasSelectedProviderApiKey) {
@@ -949,6 +950,9 @@ export function ChatArea({
   }, [modelRegistry, settings])
 
   const ensureSelectedProviderApiKey = useCallback(() => {
+    if (settings.piConfigSource === "local") {
+      return true
+    }
     if (getOusiaModelProviderApiKey(settings)?.trim()) {
       return true
     }
@@ -1033,8 +1037,11 @@ export function ChatArea({
         })
         return
       }
-      const apiKey = getOusiaModelProviderApiKey(settings)?.trim()
-      if (!apiKey) {
+      const apiKey =
+        settings.piConfigSource === "ousia"
+          ? getOusiaModelProviderApiKey(settings)?.trim()
+          : undefined
+      if (settings.piConfigSource === "ousia" && !apiKey) {
         ensureSelectedProviderApiKey()
         return
       }
@@ -1075,6 +1082,7 @@ export function ChatArea({
             provider: settings.modelProvider,
             modelId: settings.modelId,
             apiKey,
+            configSource: settings.piConfigSource,
           },
         })
         if (!result.ok) {
@@ -1363,8 +1371,11 @@ export function ChatArea({
     if (!ensureSelectedProviderApiKey()) {
       return
     }
-    const apiKey = getOusiaModelProviderApiKey(settings)?.trim()
-    if (!apiKey) {
+    const apiKey =
+      settings.piConfigSource === "ousia"
+        ? getOusiaModelProviderApiKey(settings)?.trim()
+        : undefined
+    if (settings.piConfigSource === "ousia" && !apiKey) {
       return
     }
     const statusMessageId = `compact-${Date.now()}`
@@ -1388,6 +1399,7 @@ export function ChatArea({
           provider: settings.modelProvider,
           modelId: settings.modelId,
           apiKey,
+          configSource: settings.piConfigSource,
         },
       })
       if (!result.ok) {
@@ -1506,8 +1518,11 @@ export function ChatArea({
     if (!ensureSelectedProviderApiKey()) {
       return
     }
-    const apiKey = getOusiaModelProviderApiKey(settings)?.trim()
-    if (!apiKey) {
+    const apiKey =
+      settings.piConfigSource === "ousia"
+        ? getOusiaModelProviderApiKey(settings)?.trim()
+        : undefined
+    if (settings.piConfigSource === "ousia" && !apiKey) {
       return
     }
     const markdown = formatSessionHistoryForClipboard({
@@ -1529,6 +1544,7 @@ export function ChatArea({
         provider: settings.modelProvider,
         modelId: settings.modelId,
         apiKey,
+        configSource: settings.piConfigSource,
       },
     })
     if (!result.ok && !result.canceled) {

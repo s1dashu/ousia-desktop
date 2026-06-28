@@ -26,6 +26,11 @@ import type {
   OusiaOpenDirectoryPayload,
   OusiaOpenDirectoryResult,
   OusiaOpenProjectResult,
+  OusiaPiEnvironmentPayload,
+  OusiaPiEnvironmentStatus,
+  OusiaPiInstallResult,
+  OusiaPiProviderCredentialPayload,
+  OusiaPiProviderCredentialResult,
   OusiaSelectDirectoryResult,
   OusiaWindowFullscreenEvent,
   OusiaWindowFullscreenResult,
@@ -116,8 +121,23 @@ const api = {
   ): Promise<OusiaChatCompactResult> {
     return ipcRenderer.invoke("ousia:chat:compact", payload)
   },
-  listModels(): Promise<OusiaModelRegistryResult> {
-    return ipcRenderer.invoke("ousia:models:list")
+  listModels(
+    payload?: OusiaPiEnvironmentPayload
+  ): Promise<OusiaModelRegistryResult> {
+    return ipcRenderer.invoke("ousia:models:list", payload)
+  },
+  checkPiEnvironment(
+    payload?: OusiaPiEnvironmentPayload
+  ): Promise<OusiaPiEnvironmentStatus> {
+    return ipcRenderer.invoke("ousia:pi:environment", payload)
+  },
+  installPi(): Promise<OusiaPiInstallResult> {
+    return ipcRenderer.invoke("ousia:pi:install")
+  },
+  savePiProviderCredential(
+    payload: OusiaPiProviderCredentialPayload
+  ): Promise<OusiaPiProviderCredentialResult> {
+    return ipcRenderer.invoke("ousia:pi:provider-credential", payload)
   },
   openProjectDirectory(
     options?: OusiaDirectoryPickerOptions

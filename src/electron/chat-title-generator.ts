@@ -1,7 +1,7 @@
 import "./pi-package-dir.js"
 import { completeSimple } from "@earendil-works/pi-ai"
 import type { Api, AssistantMessage, Model } from "@earendil-works/pi-ai"
-import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent"
+import { ModelRegistry } from "@earendil-works/pi-coding-agent"
 import { join } from "node:path"
 
 import type {
@@ -10,6 +10,10 @@ import type {
   OusiaModelSettings,
 } from "./chat-types.js"
 import { normalizeProviderModelId } from "./model-compat.js"
+import {
+  createReadOnlyPiAuthStorage,
+  resolvePiAgentDir,
+} from "./pi-environment.js"
 import { writeRuntimeLog } from "./runtime-logger.js"
 import {
   getVercelAiGatewayModelIds,
@@ -218,8 +222,8 @@ export async function generateChatTitleWithUtilityModel(
     return { ok: false, error: "缺少首轮用户消息。" }
   }
 
-  const agentDir = join(userData, "pi-agent")
-  const authStorage = AuthStorage.create(join(agentDir, "auth.json"))
+  const agentDir = resolvePiAgentDir(userData, payload.model.configSource)
+  const authStorage = createReadOnlyPiAuthStorage(agentDir)
   if (payload.model.apiKey?.trim()) {
     authStorage.setRuntimeApiKey(payload.model.provider, payload.model.apiKey.trim())
   }

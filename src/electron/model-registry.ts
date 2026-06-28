@@ -1,14 +1,19 @@
 import "./pi-package-dir.js"
 import { getSupportedThinkingLevels } from "@earendil-works/pi-ai"
-import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent"
+import { ModelRegistry } from "@earendil-works/pi-coding-agent"
 import { join } from "node:path"
 
 import type {
   OusiaAvailableModel,
   OusiaModelRegistryResult,
+  OusiaPiConfigSource,
   OusiaThinkingLevel,
 } from "./chat-types.js"
 import { isDeprecatedProviderModelId } from "./model-compat.js"
+import {
+  createReadOnlyPiAuthStorage,
+  resolvePiAgentDir,
+} from "./pi-environment.js"
 import { getVercelAiGatewayModelIds } from "./vercel-ai-gateway-models.js"
 
 function toOusiaThinkingLevels(levels: string[]): OusiaThinkingLevel[] {
@@ -19,10 +24,11 @@ function toOusiaThinkingLevels(levels: string[]): OusiaThinkingLevel[] {
 }
 
 export async function listPiModels(
-  userData: string
+  userData: string,
+  configSource?: OusiaPiConfigSource
 ): Promise<OusiaModelRegistryResult> {
-  const agentDir = join(userData, "pi-agent")
-  const authStorage = AuthStorage.create(join(agentDir, "auth.json"))
+  const agentDir = resolvePiAgentDir(userData, configSource)
+  const authStorage = createReadOnlyPiAuthStorage(agentDir)
   const modelRegistry = ModelRegistry.create(
     authStorage,
     join(agentDir, "models.json")
@@ -84,6 +90,14 @@ export async function listPiModels(
     )
 
   return {
+    configuredProviderIds: [
+      ...new Set(
+        modelRegistry
+          .getAvailable()
+          .map((model) => model.provider.trim())
+          .filter(Boolean)
+      ),
+    ].sort(),
     providers,
     error: modelRegistry.getError(),
   }

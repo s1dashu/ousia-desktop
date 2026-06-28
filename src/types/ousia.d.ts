@@ -26,6 +26,11 @@ import type {
   OusiaOpenDirectoryPayload,
   OusiaOpenDirectoryResult,
   OusiaOpenProjectResult,
+  OusiaPiEnvironmentPayload,
+  OusiaPiEnvironmentStatus,
+  OusiaPiInstallResult,
+  OusiaPiProviderCredentialPayload,
+  OusiaPiProviderCredentialResult,
   OusiaSelectDirectoryResult,
   OusiaWindowFullscreenEvent,
   OusiaWindowThemePayload,
@@ -63,7 +68,16 @@ declare global {
       compactChat(
         payload: OusiaChatCompactPayload
       ): Promise<OusiaChatCompactResult>
-      listModels(): Promise<OusiaModelRegistryResult>
+      listModels(
+        payload?: OusiaPiEnvironmentPayload
+      ): Promise<OusiaModelRegistryResult>
+      checkPiEnvironment(
+        payload?: OusiaPiEnvironmentPayload
+      ): Promise<OusiaPiEnvironmentStatus>
+      installPi(): Promise<OusiaPiInstallResult>
+      savePiProviderCredential(
+        payload: OusiaPiProviderCredentialPayload
+      ): Promise<OusiaPiProviderCredentialResult>
       openProjectDirectory(
         options?: OusiaDirectoryPickerOptions
       ): Promise<OusiaOpenProjectResult>

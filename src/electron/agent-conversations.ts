@@ -13,13 +13,13 @@ import { app } from "electron"
 import { ensurePiPackageDir } from "./pi-package-dir.js"
 import type { ImageContent } from "@earendil-works/pi-ai"
 import {
-  AuthStorage,
   createAgentSession,
   DefaultResourceLoader,
   ModelRegistry,
   SessionManager,
   SettingsManager,
   CURRENT_SESSION_VERSION,
+  type AuthStorage,
   type AgentSession,
   type AgentSessionEvent,
   type SessionMessageEntry,
@@ -49,14 +49,20 @@ import type {
   OusiaChatToolPayloadResult,
   OusiaAgentMode,
   OusiaModelSettings,
+  OusiaPiConfigSource,
   OusiaThinkingLevel,
 } from "./chat-types.js"
 import { normalizeProviderModelId } from "./model-compat.js"
+import {
+  createWritablePiAuthStorage,
+  resolvePiAgentDir,
+} from "./pi-environment.js"
 import { isVercelAiGatewayModelAvailable } from "./vercel-ai-gateway-models.js"
 import { writeRuntimeLog } from "./runtime-logger.js"
 
 type AgentSessionBundle = {
   authStorage: AuthStorage
+  configSource: "local" | "ousia"
   modelRegistry: ModelRegistry
   runtimeApiKeyProvider?: string
   session: AgentSession
@@ -241,10 +247,13 @@ function getConversationDir(context: OusiaChatContext) {
 function normalizeModelSettings(model: OusiaModelSettings) {
   const provider = model.provider.trim()
   const modelId = model.modelId.trim()
+  const configSource: OusiaPiConfigSource =
+    model.configSource === "ousia" ? "ousia" : "local"
   return {
     provider,
     modelId: normalizeProviderModelId(provider, modelId),
     apiKey: model.apiKey?.trim(),
+    configSource,
   }
 }
 
@@ -1323,13 +1332,14 @@ export function createAgentConversationModule({
     ensurePiPackageDir()
     const cwd = expandHomePath(context.projectPath)
     const userData = app.getPath("userData")
-    const agentDir = join(userData, "pi-agent")
+    const model = normalizeModelSettings(modelSettings)
+    const agentDir = resolvePiAgentDir(userData, model.configSource)
     const conversationDir = getConversationDir(context)
     mkdirSync(cwd, { recursive: true })
     mkdirSync(agentDir, { recursive: true })
     mkdirSync(conversationDir, { recursive: true })
 
-    const authStorage = AuthStorage.create(join(agentDir, "auth.json"))
+    const authStorage = createWritablePiAuthStorage(agentDir)
     const modelRegistry = ModelRegistry.create(
       authStorage,
       join(agentDir, "models.json")
@@ -1341,7 +1351,6 @@ export function createAgentConversationModule({
       settingsManager,
     })
     await resourceLoader.reload()
-    const model = normalizeModelSettings(modelSettings)
     if (model.apiKey) {
       authStorage.setRuntimeApiKey(model.provider, model.apiKey)
     }
@@ -1385,6 +1394,7 @@ export function createAgentConversationModule({
     session.subscribe((event) => translateAgentEvent(event, context, key))
     return {
       authStorage,
+      configSource: model.configSource,
       modelRegistry,
       runtimeApiKeyProvider: model.apiKey ? model.provider : undefined,
       session,
@@ -1398,26 +1408,35 @@ export function createAgentConversationModule({
     agentMode?: OusiaAgentMode,
     customAgentTools?: OusiaAgentToolName[],
     autoCompactContext?: boolean
-  ) {
+  ): Promise<AgentSessionBundle> {
     const key = sessionKey(context)
-    if (!sessionPromises.has(key)) {
-      const promise = createSession(
-        context,
-        key,
-        model,
-        thinkingLevel,
-        agentMode,
-        customAgentTools,
-        autoCompactContext
-      ).catch((error) => {
-        if (sessionPromises.get(key) === promise) {
-          sessionPromises.delete(key)
-        }
-        throw error
-      })
-      sessionPromises.set(key, promise)
+    const configSource = normalizeModelSettings(model).configSource
+    const existingPromise = sessionPromises.get(key)
+    if (existingPromise) {
+      const existingBundle = await existingPromise
+      if (existingBundle.configSource === configSource) {
+        return existingBundle
+      }
+      await existingBundle.session.abort().catch(() => undefined)
+      sessionPromises.delete(key)
     }
-    return sessionPromises.get(key)!
+
+    const promise = createSession(
+      context,
+      key,
+      model,
+      thinkingLevel,
+      agentMode,
+      customAgentTools,
+      autoCompactContext
+    ).catch((error) => {
+      if (sessionPromises.get(key) === promise) {
+        sessionPromises.delete(key)
+      }
+      throw error
+    })
+    sessionPromises.set(key, promise)
+    return promise
   }
 
   async function getChatHistory(

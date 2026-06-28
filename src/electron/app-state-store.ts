@@ -279,6 +279,10 @@ function normalizeAppState(value: unknown): OusiaAppState {
     projects,
     shellLayout: normalizeShellLayout(value.shellLayout),
     windowState: normalizeWindowState(value.windowState),
+    onboardingCompleted:
+      typeof value.onboardingCompleted === "boolean"
+        ? value.onboardingCompleted
+        : fallback.onboardingCompleted,
     expandedProjectIds: normalizeExpandedProjectIds(
       value.expandedProjectIds,
       projects
@@ -326,6 +330,7 @@ function preserveCurrentAppStateIndex(
   return {
     ...incomingState,
     expandedProjectIds: currentState.expandedProjectIds,
+    onboardingCompleted: currentState.onboardingCompleted,
     projects: currentState.projects,
     selectedSessionId: currentState.selectedSessionId,
     sessions: currentState.sessions,

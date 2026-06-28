@@ -41,6 +41,12 @@ export function getConfiguredModelPresets(
   const configuredProviderIds = new Set(
     providers.map((provider) => provider.id.trim()).filter(Boolean)
   )
+  for (const providerId of registry?.configuredProviderIds ?? []) {
+    const id = providerId.trim()
+    if (id) {
+      configuredProviderIds.add(id)
+    }
+  }
 
   return (
     registry?.providers
