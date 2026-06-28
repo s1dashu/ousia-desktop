@@ -26,10 +26,9 @@ import type {
   OusiaOpenDirectoryPayload,
   OusiaOpenDirectoryResult,
   OusiaOpenProjectResult,
-  OusiaPiEnvironmentPayload,
   OusiaPiEnvironmentStatus,
-  OusiaPiInstallResult,
   OusiaPiProviderCredentialPayload,
+  OusiaPiProviderCredentialRemovalPayload,
   OusiaPiProviderCredentialResult,
   OusiaSelectDirectoryResult,
   OusiaWindowFullscreenEvent,
@@ -121,23 +120,21 @@ const api = {
   ): Promise<OusiaChatCompactResult> {
     return ipcRenderer.invoke("ousia:chat:compact", payload)
   },
-  listModels(
-    payload?: OusiaPiEnvironmentPayload
-  ): Promise<OusiaModelRegistryResult> {
-    return ipcRenderer.invoke("ousia:models:list", payload)
+  listModels(): Promise<OusiaModelRegistryResult> {
+    return ipcRenderer.invoke("ousia:models:list")
   },
-  checkPiEnvironment(
-    payload?: OusiaPiEnvironmentPayload
-  ): Promise<OusiaPiEnvironmentStatus> {
-    return ipcRenderer.invoke("ousia:pi:environment", payload)
-  },
-  installPi(): Promise<OusiaPiInstallResult> {
-    return ipcRenderer.invoke("ousia:pi:install")
+  checkPiEnvironment(): Promise<OusiaPiEnvironmentStatus> {
+    return ipcRenderer.invoke("ousia:pi:environment")
   },
   savePiProviderCredential(
     payload: OusiaPiProviderCredentialPayload
   ): Promise<OusiaPiProviderCredentialResult> {
     return ipcRenderer.invoke("ousia:pi:provider-credential", payload)
+  },
+  removePiProviderCredential(
+    payload: OusiaPiProviderCredentialRemovalPayload
+  ): Promise<OusiaPiProviderCredentialResult> {
+    return ipcRenderer.invoke("ousia:pi:provider-credential:remove", payload)
   },
   openProjectDirectory(
     options?: OusiaDirectoryPickerOptions

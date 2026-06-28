@@ -6,7 +6,6 @@ import { join } from "node:path"
 import type {
   OusiaAvailableModel,
   OusiaModelRegistryResult,
-  OusiaPiConfigSource,
   OusiaThinkingLevel,
 } from "./chat-types.js"
 import { isDeprecatedProviderModelId } from "./model-compat.js"
@@ -23,11 +22,8 @@ function toOusiaThinkingLevels(levels: string[]): OusiaThinkingLevel[] {
   )
 }
 
-export async function listPiModels(
-  userData: string,
-  configSource?: OusiaPiConfigSource
-): Promise<OusiaModelRegistryResult> {
-  const agentDir = resolvePiAgentDir(userData, configSource)
+export async function listPiModels(): Promise<OusiaModelRegistryResult> {
+  const agentDir = resolvePiAgentDir()
   const authStorage = createReadOnlyPiAuthStorage(agentDir)
   const modelRegistry = ModelRegistry.create(
     authStorage,

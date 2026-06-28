@@ -4,7 +4,6 @@ import {
   EyeOff,
   FolderOpen,
   Plus,
-  Sparkles,
   Trash2,
   X,
 } from "@/components/icons/huge-icons"
@@ -62,7 +61,7 @@ type SettingsPageProps = {
   isWindowFullscreen: boolean
   modelRegistry: OusiaModelRegistryResult | undefined
   onClose: () => void
-  onOpenOnboarding: () => void
+  onRefreshModelRegistry: () => Promise<OusiaModelRegistryResult | undefined>
   onSettingsChange: (settings: AppSettings) => void
   settings: AppSettings
 }
@@ -80,7 +79,7 @@ export function SettingsPage({
   isWindowFullscreen,
   modelRegistry,
   onClose,
-  onOpenOnboarding,
+  onRefreshModelRegistry,
   onSettingsChange,
   settings,
 }: SettingsPageProps) {
@@ -91,6 +90,10 @@ export function SettingsPage({
   const [visibleProviderApiKeyIds, setVisibleProviderApiKeyIds] = useState<
     Set<string>
   >(() => new Set())
+  const [savingProviderIds, setSavingProviderIds] = useState<Set<string>>(
+    () => new Set()
+  )
+  const [providerError, setProviderError] = useState("")
   const { setTheme } = useTheme()
   const t = getMessages(draft.language)
   const themeOptions: Array<{
@@ -209,27 +212,101 @@ export function SettingsPage({
     applySettings({ defaultWorkDir: result.path })
   }
 
-  function addProvider() {
+  function rememberProviderId(providerId: string) {
+    return settings.modelProviders.some((provider) => provider.id === providerId)
+      ? settings.modelProviders.map((provider) =>
+          provider.id === providerId ? { ...provider, apiKey: "" } : provider
+        )
+      : [
+          ...settings.modelProviders,
+          {
+            id: providerId,
+            apiKey: "",
+          },
+        ]
+  }
+
+  async function persistProviderCredential(providerId: string, apiKey: string) {
+    if (!window.ousia) {
+      setProviderError(t.chat.noElectron)
+      return false
+    }
+    setProviderError("")
+    setSavingProviderIds((current) => new Set(current).add(providerId))
+    try {
+      const result = await window.ousia
+        .savePiProviderCredential({
+          apiKey,
+          provider: providerId,
+        })
+        .catch((error: unknown) => ({
+          ok: false as const,
+          error: error instanceof Error ? error.message : String(error),
+        }))
+      if (!result.ok) {
+        setProviderError(result.error ?? t.settings.providerSaveFailed)
+        return false
+      }
+      await onRefreshModelRegistry().catch(() => undefined)
+      return true
+    } finally {
+      setSavingProviderIds((current) => {
+        const next = new Set(current)
+        next.delete(providerId)
+        return next
+      })
+    }
+  }
+
+  async function removeProviderCredential(providerId: string) {
+    if (!window.ousia) {
+      setProviderError(t.chat.noElectron)
+      return false
+    }
+    setProviderError("")
+    setSavingProviderIds((current) => new Set(current).add(providerId))
+    try {
+      const result = await window.ousia
+        .removePiProviderCredential({
+          provider: providerId,
+        })
+        .catch((error: unknown) => ({
+          ok: false as const,
+          error: error instanceof Error ? error.message : String(error),
+        }))
+      if (!result.ok) {
+        setProviderError(result.error ?? t.settings.providerRemoveFailed)
+        return false
+      }
+      await onRefreshModelRegistry().catch(() => undefined)
+      return true
+    } finally {
+      setSavingProviderIds((current) => {
+        const next = new Set(current)
+        next.delete(providerId)
+        return next
+      })
+    }
+  }
+
+  async function addProvider() {
     const id = newProviderId.trim()
     const provider = modelRegistry?.providers.find((item) => item.id === id)
     if (
       !provider ||
-      draft.modelProviders.some((configured) => configured.id === id) ||
       !newProviderApiKey.trim()
     ) {
+      return
+    }
+    const didSave = await persistProviderCredential(id, newProviderApiKey.trim())
+    if (!didSave) {
       return
     }
     const nextModelId = provider.models[0]?.modelId || settings.modelId
     applySettings({
       modelProvider: id,
       modelId: nextModelId,
-      modelProviders: [
-        ...draft.modelProviders,
-        {
-          id,
-          apiKey: newProviderApiKey.trim(),
-        },
-      ],
+      modelProviders: rememberProviderId(id),
     })
     setNewProviderId("")
     setNewProviderApiKey("")
@@ -237,13 +314,20 @@ export function SettingsPage({
   }
 
   function updateProviderDraft(providerId: string, apiKey: string) {
-    const nextModelProviders = draft.modelProviders.map((provider) =>
-      provider.id === providerId ? { ...provider, apiKey } : provider
+    const nextModelProviders = draft.modelProviders.some(
+      (provider) => provider.id === providerId
     )
+      ? draft.modelProviders.map((provider) =>
+          provider.id === providerId ? { ...provider, apiKey } : provider
+        )
+      : [
+          ...draft.modelProviders,
+          {
+            id: providerId,
+            apiKey,
+          },
+        ]
     updateDraft({
-      modelProviders: nextModelProviders,
-    })
-    applySettings({
       modelProviders: nextModelProviders,
     })
     if (!apiKey.trim()) {
@@ -255,30 +339,43 @@ export function SettingsPage({
     }
   }
 
-  function commitProviderApiKey(providerId: string) {
+  async function commitProviderApiKey(providerId: string) {
     const draftProvider = draft.modelProviders.find(
       (provider) => provider.id === providerId
     )
-    if (!draftProvider) {
+    const apiKey = draftProvider?.apiKey.trim()
+    if (!draftProvider || !apiKey) {
+      return
+    }
+    const didSave = await persistProviderCredential(providerId, apiKey)
+    if (!didSave) {
       return
     }
     applySettings({
-      modelProviders: settings.modelProviders.map((provider) =>
-        provider.id === providerId
-          ? { ...provider, apiKey: draftProvider.apiKey.trim() }
-          : provider
+      modelProviders: rememberProviderId(providerId),
+    })
+    updateDraft({
+      modelProviders: draft.modelProviders.map((provider) =>
+        provider.id === providerId ? { ...provider, apiKey: "" } : provider
       ),
     })
   }
 
-  function deleteProvider(providerId: string) {
+  async function deleteProvider(providerId: string) {
+    const didRemove = await removeProviderCredential(providerId)
+    if (!didRemove) {
+      return
+    }
     const nextProviders = settings.modelProviders.filter(
       (provider) => provider.id !== providerId
     )
     const fallbackProviderId = "deepseek"
+    const nextRegistryProviderId =
+      modelRegistry?.configuredProviderIds.find((id) => id !== providerId) ??
+      fallbackProviderId
     const nextProviderId =
       nextProviders.length === 0
-        ? fallbackProviderId
+        ? nextRegistryProviderId
         : settings.modelProvider === providerId
           ? (nextProviders[0]?.id ?? settings.modelProvider)
           : settings.modelProvider
@@ -314,11 +411,31 @@ export function SettingsPage({
     })
   }
 
+  const configuredProviderIds = new Set([
+    ...draft.modelProviders.map((provider) => provider.id),
+    ...(modelRegistry?.configuredProviderIds ?? []),
+  ])
+  const providerRows = [...configuredProviderIds]
+    .filter(Boolean)
+    .map((providerId) => ({
+      id: providerId,
+      apiKey:
+        draft.modelProviders.find((provider) => provider.id === providerId)
+          ?.apiKey ?? "",
+    }))
+    .sort((left, right) =>
+      providerLabel(modelRegistry, left.id).localeCompare(
+        providerLabel(modelRegistry, right.id),
+        undefined,
+        { sensitivity: "base" }
+      )
+    )
+  const configuredProviderIdSet = new Set(providerRows.map((provider) => provider.id))
   const addableProviders =
     modelRegistry?.providers.filter(
       (provider) =>
         provider.models.length > 0 &&
-        !draft.modelProviders.some((configured) => configured.id === provider.id)
+        !configuredProviderIdSet.has(provider.id)
     ) ?? []
   const addableProviderSelectItems = addableProviders.map((provider) => ({
     label: provider.name,
@@ -327,7 +444,10 @@ export function SettingsPage({
   const hasAddableProvider = addableProviders.some(
     (provider) => provider.id === newProviderId
   )
-  const canAddProvider = hasAddableProvider && Boolean(newProviderApiKey.trim())
+  const canAddProvider =
+    hasAddableProvider &&
+    Boolean(newProviderApiKey.trim()) &&
+    !savingProviderIds.has(newProviderId)
 
   function openAddProviderDialog() {
     const defaultProvider =
@@ -712,10 +832,11 @@ export function SettingsPage({
                 </Button>
               </div>
               <div className="-mx-1 grid min-w-0 gap-2 px-1 py-1">
-                {draft.modelProviders.map((provider) => {
+                {providerRows.map((provider) => {
                   const providerHasApiKey = Boolean(provider.apiKey.trim())
                   const isProviderApiKeyVisible =
                     visibleProviderApiKeyIds.has(provider.id)
+                  const isProviderSaving = savingProviderIds.has(provider.id)
 
                   return (
                     <div
@@ -731,17 +852,18 @@ export function SettingsPage({
                         <Input
                           aria-label={`${provider.id} API Key`}
                           className="ousia-squircle-corners min-w-0 rounded-xl border-[0.5px] border-foreground/10 bg-background/85 pr-10 shadow-[inset_0_1px_0_rgba(255,255,255,0.24)] focus-visible:bg-background disabled:opacity-100 dark:bg-input/45 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] dark:focus-visible:bg-input/60"
+                          disabled={isProviderSaving}
                           value={provider.apiKey}
                           onChange={(event) =>
                             updateProviderDraft(provider.id, event.target.value)
                           }
-                          onBlur={() => commitProviderApiKey(provider.id)}
+                          onBlur={() => void commitProviderApiKey(provider.id)}
                           onKeyDown={(event) => {
                             if (event.key === "Enter") {
                               event.currentTarget.blur()
                             }
                           }}
-                          placeholder="sk-..."
+                          placeholder={t.settings.configuredInPi}
                           type={
                             providerHasApiKey && isProviderApiKeyVisible
                               ? "text"
@@ -777,7 +899,8 @@ export function SettingsPage({
                         size="icon-sm"
                         className="ousia-squircle-corners justify-self-end rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground active:scale-[0.96]"
                         aria-label={`${t.app.delete} ${provider.id}`}
-                        onClick={() => deleteProvider(provider.id)}
+                        disabled={isProviderSaving}
+                        onClick={() => void deleteProvider(provider.id)}
                       >
                         <Trash2 size={18} />
                       </Button>
@@ -785,6 +908,11 @@ export function SettingsPage({
                   )
                 })}
               </div>
+              {providerError ? (
+                <div className="rounded-xl border-[0.5px] border-red-500/20 bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">
+                  {providerError}
+                </div>
+              ) : null}
             </div>
             <Dialog
               open={isAddProviderDialogOpen}
@@ -854,7 +982,7 @@ export function SettingsPage({
                     onKeyDown={(event) => {
                       if (event.key === "Enter" && canAddProvider) {
                         event.preventDefault()
-                        addProvider()
+                        void addProvider()
                       }
                     }}
                     placeholder="sk-..."
@@ -882,7 +1010,7 @@ export function SettingsPage({
                     size="sm"
                     className="ousia-squircle-corners h-10 rounded-2xl bg-neutral-950 px-5 text-white hover:bg-neutral-800 active:scale-[0.96]"
                     disabled={!canAddProvider}
-                    onClick={addProvider}
+                    onClick={() => void addProvider()}
                   >
                     {t.app.add}
                   </Button>
@@ -893,26 +1021,6 @@ export function SettingsPage({
 
           <section className={settingsSectionClass}>
             <h2 className="text-sm font-semibold">{t.settings.advanced}</h2>
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className={settingsLabelClass}>
-                  {t.settings.reopenOnboarding}
-                </div>
-                <div className={settingsHelpClass}>
-                  {t.settings.reopenOnboardingHelp}
-                </div>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="ousia-squircle-corners h-9 shrink-0 rounded-xl border-[0.5px] border-foreground/10 bg-background/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.24)] hover:bg-background dark:bg-input/45 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] dark:hover:bg-input/60"
-                onClick={onOpenOnboarding}
-              >
-                <Sparkles size={18} />
-                {t.settings.reopenOnboarding}
-              </Button>
-            </div>
             <div className={settingsFieldClass}>
               <label className={settingsLabelClass}>
                 {t.settings.defaultWorkDir}

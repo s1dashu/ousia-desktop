@@ -28,8 +28,8 @@ import type {
   OusiaDirectoryPickerOptions,
   OusiaOpenDirectoryPayload,
   OusiaOpenDirectoryResult,
-  OusiaPiEnvironmentPayload,
   OusiaPiProviderCredentialPayload,
+  OusiaPiProviderCredentialRemovalPayload,
   OusiaSelectDirectoryResult,
   OusiaWindowThemePayload,
 } from "./chat-types.js"
@@ -37,7 +37,7 @@ import { expandHomePath } from "./host-paths.js"
 import { listPiModels } from "./model-registry.js"
 import {
   checkPiEnvironment,
-  installPiAndCheck,
+  removePiProviderCredential,
   savePiProviderCredential,
 } from "./pi-environment.js"
 import {
@@ -83,7 +83,7 @@ ipcMain.handle("ousia:chat:send", (_event, payload: OusiaChatSendPayload) =>
 ipcMain.handle(
   "ousia:chat:generate-title",
   (_event, payload: OusiaChatGenerateTitlePayload) =>
-    generateChatTitleWithUtilityModel(payload, app.getPath("userData"))
+    generateChatTitleWithUtilityModel(payload)
 )
 
 ipcMain.handle("ousia:chat:history", (_event, payload: OusiaChatHistoryPayload) =>
@@ -155,24 +155,20 @@ ipcMain.handle("ousia:chat:compact", (_event, payload: OusiaChatCompactPayload) 
   agentConversations.compactChat(payload)
 )
 
-ipcMain.handle(
-  "ousia:models:list",
-  (_event, payload?: OusiaPiEnvironmentPayload) =>
-    listPiModels(app.getPath("userData"), payload?.configSource)
-)
+ipcMain.handle("ousia:models:list", () => listPiModels())
 
-ipcMain.handle(
-  "ousia:pi:environment",
-  (_event, payload?: OusiaPiEnvironmentPayload) =>
-    checkPiEnvironment(app.getPath("userData"), payload?.configSource)
-)
-
-ipcMain.handle("ousia:pi:install", () => installPiAndCheck(app.getPath("userData")))
+ipcMain.handle("ousia:pi:environment", () => checkPiEnvironment())
 
 ipcMain.handle(
   "ousia:pi:provider-credential",
   (_event, payload: OusiaPiProviderCredentialPayload) =>
-    savePiProviderCredential(app.getPath("userData"), payload)
+    savePiProviderCredential(payload)
+)
+
+ipcMain.handle(
+  "ousia:pi:provider-credential:remove",
+  (_event, payload: OusiaPiProviderCredentialRemovalPayload) =>
+    removePiProviderCredential(payload)
 )
 
 async function selectDirectory(

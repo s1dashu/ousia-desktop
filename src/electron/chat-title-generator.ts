@@ -214,15 +214,14 @@ function textFromAssistantMessage(message: AssistantMessage) {
 }
 
 export async function generateChatTitleWithUtilityModel(
-  payload: OusiaChatGenerateTitlePayload,
-  userData: string
+  payload: OusiaChatGenerateTitlePayload
 ): Promise<OusiaChatGenerateTitleResult> {
   const prompt = payload.prompt.trim()
   if (!prompt) {
     return { ok: false, error: "缺少首轮用户消息。" }
   }
 
-  const agentDir = resolvePiAgentDir(userData, payload.model.configSource)
+  const agentDir = resolvePiAgentDir()
   const authStorage = createReadOnlyPiAuthStorage(agentDir)
   if (payload.model.apiKey?.trim()) {
     authStorage.setRuntimeApiKey(payload.model.provider, payload.model.apiKey.trim())

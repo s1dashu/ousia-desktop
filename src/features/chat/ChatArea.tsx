@@ -70,7 +70,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import {
-  getOusiaModelProviderApiKey,
   normalizeOusiaAppSettings,
   type OusiaAgentMode,
   type OusiaAgentToolName,
@@ -154,6 +153,7 @@ type ChatAreaProps = {
   onGenerateSessionTitle: (sessionId: string, firstPrompt: string) => void
   onBranchFromMessage: (messageId: string) => void
   onLoadOlderHistory: () => Promise<void> | void
+  onRefreshModelRegistry: () => Promise<OusiaModelRegistryResult | undefined>
   onSessionCompletionVisibility: (
     sessionId: string,
     isFullyVisible: boolean
@@ -232,6 +232,7 @@ export function ChatArea({
   onGenerateSessionTitle,
   onBranchFromMessage,
   onLoadOlderHistory,
+  onRefreshModelRegistry,
   onSessionCompletionVisibility,
   onSessionViewed,
   onSettingsChange,
@@ -264,6 +265,8 @@ export function ChatArea({
   const [providerKeyDialogProviderId, setProviderKeyDialogProviderId] =
     useState("")
   const [providerKeyDialogApiKey, setProviderKeyDialogApiKey] = useState("")
+  const [providerKeyDialogError, setProviderKeyDialogError] = useState("")
+  const [isSavingProviderKey, setIsSavingProviderKey] = useState(false)
   const [copyStatus, setCopyStatus] = useState<ChatCopyStatus>("idle")
   const [contextUsageState, setContextUsageState] = useState<{
     key: string
@@ -332,11 +335,10 @@ export function ChatArea({
     (provider) => provider.id === providerKeyDialogProviderId
   )
   const canSaveProviderKey =
-    Boolean(providerKeyDialogProvider) && Boolean(providerKeyDialogApiKey.trim())
-  const hasSelectedProviderApiKey = Boolean(
-    settings.piConfigSource === "local" ||
-      getOusiaModelProviderApiKey(settings)?.trim()
-  )
+    Boolean(providerKeyDialogProvider) &&
+    Boolean(providerKeyDialogApiKey.trim()) &&
+    !isSavingProviderKey
+  const hasSelectedProviderApiKey = !modelRegistry || Boolean(selectedModelPreset)
   const visibleChatItems = useMemo(() => {
     if (!hasSelectedProviderApiKey) {
       return items
@@ -940,9 +942,8 @@ export function ChatArea({
       providerOptions[0]
     const providerId = provider?.id ?? settings.modelProvider
     setProviderKeyDialogProviderId(providerId)
-    setProviderKeyDialogApiKey(
-      getOusiaModelProviderApiKey(settings, providerId)?.trim() ?? ""
-    )
+    setProviderKeyDialogApiKey("")
+    setProviderKeyDialogError("")
     setIsComposerSettingsOpen(false)
     setIsModelMenuOpen(false)
     setOpenSessionMenuKey(null)
@@ -950,10 +951,7 @@ export function ChatArea({
   }, [modelRegistry, settings])
 
   const ensureSelectedProviderApiKey = useCallback(() => {
-    if (settings.piConfigSource === "local") {
-      return true
-    }
-    if (getOusiaModelProviderApiKey(settings)?.trim()) {
+    if (!modelRegistry || selectedModelPreset) {
       return true
     }
     openProviderKeyDialog()
@@ -968,30 +966,48 @@ export function ChatArea({
   }, [
     onLocalEvent,
     openProviderKeyDialog,
-    settings,
+    modelRegistry,
+    selectedModelPreset,
     t.chat.providerApiKeyRequiredInfo,
   ])
 
-  function saveProviderKeyFromDialog() {
+  async function saveProviderKeyFromDialog() {
     const apiKey = providerKeyDialogApiKey.trim()
     const provider = providerKeyDialogProvider
     const defaultModel = provider?.models[0]
-    if (!provider || !defaultModel || !apiKey) {
+    if (!provider || !defaultModel || !apiKey || !window.ousia) {
       return
     }
+    setProviderKeyDialogError("")
+    setIsSavingProviderKey(true)
+    const result = await window.ousia
+      .savePiProviderCredential({
+        apiKey,
+        provider: provider.id,
+      })
+      .catch((error: unknown) => ({
+        ok: false as const,
+        error: error instanceof Error ? error.message : String(error),
+      }))
+    setIsSavingProviderKey(false)
+    if (!result.ok) {
+      setProviderKeyDialogError(result.error ?? t.settings.providerSaveFailed)
+      return
+    }
+    await onRefreshModelRegistry().catch(() => undefined)
     const nextModelProviders = settings.modelProviders.some(
       (configured) => configured.id === provider.id
     )
       ? settings.modelProviders.map((configured) =>
           configured.id === provider.id
-            ? { ...configured, apiKey }
+            ? { ...configured, apiKey: "" }
             : configured
         )
       : [
           ...settings.modelProviders,
           {
             id: provider.id,
-            apiKey,
+            apiKey: "",
           },
         ]
     const thinkingLevel = defaultModel.thinkingLevels.includes(
@@ -1037,12 +1053,7 @@ export function ChatArea({
         })
         return
       }
-      const apiKey =
-        settings.piConfigSource === "ousia"
-          ? getOusiaModelProviderApiKey(settings)?.trim()
-          : undefined
-      if (settings.piConfigSource === "ousia" && !apiKey) {
-        ensureSelectedProviderApiKey()
+      if (!ensureSelectedProviderApiKey()) {
         return
       }
       if (
@@ -1081,8 +1092,6 @@ export function ChatArea({
           model: {
             provider: settings.modelProvider,
             modelId: settings.modelId,
-            apiKey,
-            configSource: settings.piConfigSource,
           },
         })
         if (!result.ok) {
@@ -1371,13 +1380,6 @@ export function ChatArea({
     if (!ensureSelectedProviderApiKey()) {
       return
     }
-    const apiKey =
-      settings.piConfigSource === "ousia"
-        ? getOusiaModelProviderApiKey(settings)?.trim()
-        : undefined
-    if (settings.piConfigSource === "ousia" && !apiKey) {
-      return
-    }
     const statusMessageId = `compact-${Date.now()}`
     setIsCompacting(true)
     onLocalEvent({
@@ -1398,8 +1400,6 @@ export function ChatArea({
         model: {
           provider: settings.modelProvider,
           modelId: settings.modelId,
-          apiKey,
-          configSource: settings.piConfigSource,
         },
       })
       if (!result.ok) {
@@ -1518,13 +1518,6 @@ export function ChatArea({
     if (!ensureSelectedProviderApiKey()) {
       return
     }
-    const apiKey =
-      settings.piConfigSource === "ousia"
-        ? getOusiaModelProviderApiKey(settings)?.trim()
-        : undefined
-    if (settings.piConfigSource === "ousia" && !apiKey) {
-      return
-    }
     const markdown = formatSessionHistoryForClipboard({
       items,
       projectPath: currentProject.path,
@@ -1543,8 +1536,6 @@ export function ChatArea({
       model: {
         provider: settings.modelProvider,
         modelId: settings.modelId,
-        apiKey,
-        configSource: settings.piConfigSource,
       },
     })
     if (!result.ok && !result.canceled) {
@@ -2126,10 +2117,8 @@ export function ChatArea({
               onValueChange={(value) => {
                 const nextProviderId = value ?? ""
                 setProviderKeyDialogProviderId(nextProviderId)
-                setProviderKeyDialogApiKey(
-                  getOusiaModelProviderApiKey(settings, nextProviderId)?.trim() ??
-                    ""
-                )
+                setProviderKeyDialogApiKey("")
+                setProviderKeyDialogError("")
               }}
             >
               <SelectTrigger
@@ -2164,7 +2153,7 @@ export function ChatArea({
               onKeyDown={(event) => {
                 if (event.key === "Enter" && canSaveProviderKey) {
                   event.preventDefault()
-                  saveProviderKeyFromDialog()
+                  void saveProviderKeyFromDialog()
                 }
               }}
               placeholder="sk-..."
@@ -2176,6 +2165,12 @@ export function ChatArea({
               </span>
             ) : null}
           </label>
+
+          {providerKeyDialogError ? (
+            <div className="mt-4 rounded-xl border-[0.5px] border-red-500/20 bg-red-50 px-3 py-2 text-xs leading-5 text-red-700">
+              {providerKeyDialogError}
+            </div>
+          ) : null}
 
           <DialogFooter className="mt-5">
             <Button
@@ -2192,9 +2187,9 @@ export function ChatArea({
               size="sm"
               className="ousia-squircle-corners h-10 rounded-2xl bg-neutral-950 px-5 text-white hover:bg-neutral-800 active:scale-[0.96]"
               disabled={!canSaveProviderKey}
-              onClick={saveProviderKeyFromDialog}
+              onClick={() => void saveProviderKeyFromDialog()}
             >
-              {t.app.add}
+              {isSavingProviderKey ? t.settings.saving : t.app.add}
             </Button>
           </DialogFooter>
         </DialogContent>

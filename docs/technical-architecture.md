@@ -63,6 +63,9 @@ Main process entrypoints:
 - `getChatHistory(payload)`
 - `interruptChat(payload)`
 - `listModels()`
+- `checkPiEnvironment()`
+- `savePiProviderCredential(payload)`
+- `removePiProviderCredential(payload)`
 - `openProjectDirectory()`
 - `selectDirectory()`
 - `getWindowFullscreenState()`
@@ -74,16 +77,16 @@ Main process entrypoints:
 ## Agent Sessions
 
 Each chat request includes `projectPath` and `sessionId`. Electron main expands
-the project path, resolves the selected Pi config source, and stores
-conversation history under `userData/sessions/<project>/<session>`. The default
-Pi config source is the user's local Pi config (`~/.pi/agent`, honoring
-`PI_CODING_AGENT_DIR`); Ousia can still use its isolated `userData/pi-agent`
-directory when configured to do so.
+the project path, and hosts the bundled Pi coding agent runtime in Electron
+main. Ousia always uses the user's local Pi agent directory as resolved by the
+Pi SDK (`~/.pi/agent`, honoring `PI_CODING_AGENT_DIR`) for model config,
+credentials, resources, and session history.
 
-First launch shows an onboarding dialog. It checks for the local `pi` CLI,
-offers one-click installation when missing, checks whether the selected Pi
-config already has model credentials, and saves new provider API keys into the
-selected Pi config.
+Ousia maps its sidebar `sessionId` to a Pi session with the same id in Pi's
+default session directory for the project cwd. If the Pi session already exists,
+it is opened; otherwise Ousia creates a new Pi session with that id. Provider
+API keys entered through Ousia are written into the local Pi `auth.json` as a
+single-provider merge, preserving unrelated existing Pi credentials.
 
 The app no longer installs an Ousia usage skill, filters a user `ousia` skill,
 or prepends an `ousia` CLI shim to the agent environment.

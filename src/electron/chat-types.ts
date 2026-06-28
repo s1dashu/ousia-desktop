@@ -29,7 +29,6 @@ export type OusiaThemePreference = "dark" | "light" | "system"
 export type OusiaResolvedTheme = "dark" | "light"
 export type OusiaSendDuringRunMode = "steer" | "queue"
 export type OusiaAgentMode = "standard" | "readOnly" | "noTerminal" | "custom"
-export type OusiaPiConfigSource = "local" | "ousia"
 export const OUSIA_CHAT_CONTENT_WIDTHS = [
   "standard",
   "wide",
@@ -79,7 +78,6 @@ export type OusiaAppSettings = {
   autoCompactContext: boolean
   showContextUsage: boolean
   continueQueuedMessagesAfterInterrupt: boolean
-  piConfigSource: OusiaPiConfigSource
   thinkingLevel: OusiaThinkingLevel
   modelProvider: string
   modelId: string
@@ -113,38 +111,23 @@ export type OusiaModelRegistryResult = {
   error?: string
 }
 
-export type OusiaPiEnvironmentPayload = {
-  configSource?: OusiaPiConfigSource
-}
-
 export type OusiaPiEnvironmentStatus = {
   agentDir: string
   authJsonExists: boolean
-  cliError?: string
-  cliInstalled: boolean
-  cliPath?: string
-  cliVersion?: string
   configDirExists: boolean
-  configSource: OusiaPiConfigSource
   configuredProviderIds: string[]
   hasConfiguredCredential: boolean
-  installCommand: string
   modelCount: number
   modelsJsonExists: boolean
-}
-
-export type OusiaPiInstallResult = {
-  error?: string
-  exitCode?: number | null
-  ok: boolean
-  stderr?: string
-  stdout?: string
-  status?: OusiaPiEnvironmentStatus
+  runtime: "bundled"
 }
 
 export type OusiaPiProviderCredentialPayload = {
   apiKey: string
-  configSource?: OusiaPiConfigSource
+  provider: string
+}
+
+export type OusiaPiProviderCredentialRemovalPayload = {
   provider: string
 }
 
@@ -187,7 +170,6 @@ export type OusiaAppState = {
   projects: OusiaProjectRecord[]
   shellLayout: OusiaShellLayoutState
   windowState: OusiaWindowState
-  onboardingCompleted: boolean
 } & OusiaAppSelectionState
 
 export type OusiaAppStateSaveResult = {
@@ -212,7 +194,6 @@ export const defaultOusiaAppSettings: OusiaAppSettings = {
   autoCompactContext: true,
   showContextUsage: false,
   continueQueuedMessagesAfterInterrupt: true,
-  piConfigSource: "local",
   thinkingLevel: "medium",
   modelProvider: "deepseek",
   modelId: "deepseek-v4-flash",
@@ -231,7 +212,7 @@ export function normalizeOusiaModelProviders(
     }
     providers.set(id, {
       id,
-      apiKey: provider.apiKey.trim(),
+      apiKey: "",
     })
   }
 
@@ -336,8 +317,6 @@ export function normalizeOusiaAppSettings(
       typeof merged.continueQueuedMessagesAfterInterrupt === "boolean"
         ? merged.continueQueuedMessagesAfterInterrupt
         : defaultOusiaAppSettings.continueQueuedMessagesAfterInterrupt,
-    piConfigSource:
-      merged.piConfigSource === "ousia" ? "ousia" : "local",
     modelProvider,
     modelId: merged.modelId.trim() || defaultOusiaAppSettings.modelId,
     modelProviders: normalizeOusiaModelProviders({
@@ -367,13 +346,6 @@ export function resolveOusiaChatContentWidthValue(
     return "56rem"
   }
   return "48rem"
-}
-
-export function getOusiaModelProviderApiKey(
-  settings: OusiaAppSettings,
-  provider = settings.modelProvider
-) {
-  return settings.modelProviders.find((item) => item.id === provider)?.apiKey
 }
 
 export function createOusiaId(prefix: string) {
@@ -439,7 +411,6 @@ export function createDefaultOusiaAppState(): OusiaAppState {
     projects: [],
     shellLayout: createDefaultOusiaShellLayout(),
     windowState: createDefaultOusiaWindowState(),
-    onboardingCompleted: false,
     expandedProjectIds: [],
     selectedSessionId: sessions[0].id,
   }
@@ -449,7 +420,6 @@ export type OusiaModelSettings = {
   provider: string
   modelId: string
   apiKey?: string
-  configSource?: OusiaPiConfigSource
 }
 
 export type OusiaChatAttachment = {

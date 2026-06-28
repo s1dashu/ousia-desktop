@@ -1,15 +1,11 @@
 import "./pi-package-dir.js"
 import {
-  existsSync,
   mkdirSync,
-  readdirSync,
-  readFileSync,
   writeFileSync,
 } from "node:fs"
 import { stat } from "node:fs/promises"
 import { join } from "node:path"
 import { homedir } from "node:os"
-import { app } from "electron"
 import { ensurePiPackageDir } from "./pi-package-dir.js"
 import type { ImageContent } from "@earendil-works/pi-ai"
 import {
@@ -49,7 +45,6 @@ import type {
   OusiaChatToolPayloadResult,
   OusiaAgentMode,
   OusiaModelSettings,
-  OusiaPiConfigSource,
   OusiaThinkingLevel,
 } from "./chat-types.js"
 import { normalizeProviderModelId } from "./model-compat.js"
@@ -62,7 +57,6 @@ import { writeRuntimeLog } from "./runtime-logger.js"
 
 type AgentSessionBundle = {
   authStorage: AuthStorage
-  configSource: "local" | "ousia"
   modelRegistry: ModelRegistry
   runtimeApiKeyProvider?: string
   session: AgentSession
@@ -213,13 +207,6 @@ function previewToolInput(value: string) {
   }
 }
 
-function safePathSegment(value: string) {
-  return (
-    value.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") ||
-    "default"
-  )
-}
-
 function expandHomePath(path: string) {
   if (path === "~") {
     return homedir()
@@ -234,26 +221,29 @@ function sessionKey(context: OusiaChatContext) {
   return `${context.projectPath}::${context.sessionId}`
 }
 
-function getConversationDir(context: OusiaChatContext) {
-  const cwd = expandHomePath(context.projectPath)
-  return join(
-    app.getPath("userData"),
-    "sessions",
-    safePathSegment(cwd),
-    safePathSegment(context.sessionId)
-  )
+function getDefaultPiSessionDir(cwd: string) {
+  return SessionManager.create(cwd).getSessionDir()
+}
+
+async function findPiSessionByExactId(cwd: string, sessionId: string) {
+  const sessions = await SessionManager.list(cwd)
+  return sessions.find((session) => session.id === sessionId)
+}
+
+async function openOrCreatePiSessionManager(cwd: string, sessionId: string) {
+  const existingSession = await findPiSessionByExactId(cwd, sessionId)
+  return existingSession
+    ? SessionManager.open(existingSession.path)
+    : SessionManager.create(cwd, undefined, { id: sessionId })
 }
 
 function normalizeModelSettings(model: OusiaModelSettings) {
   const provider = model.provider.trim()
   const modelId = model.modelId.trim()
-  const configSource: OusiaPiConfigSource =
-    model.configSource === "ousia" ? "ousia" : "local"
   return {
     provider,
     modelId: normalizeProviderModelId(provider, modelId),
     apiKey: model.apiKey?.trim(),
-    configSource,
   }
 }
 
@@ -747,103 +737,10 @@ function createBranchedSessionFile({
   return targetFile
 }
 
-async function findRecentPiSessionFile(cwd: string, conversationDir: string) {
-  if (!existsSync(conversationDir)) {
-    return undefined
-  }
-  const sessions = await SessionManager.list(cwd, conversationDir)
-  return sessions.sort(
-    (left, right) => right.modified.getTime() - left.modified.getTime()
-  )[0]?.path
-}
-
-function readSessionHeaderCwd(sessionFile: string) {
-  try {
-    const firstLine = readFileSync(sessionFile, "utf8").split("\n", 1)[0]
-    const header = JSON.parse(firstLine) as { cwd?: unknown }
-    return typeof header.cwd === "string" && header.cwd.trim()
-      ? header.cwd
-      : undefined
-  } catch {
-    return undefined
-  }
-}
-
-async function findRecentPiSessionFileForHistory(context: OusiaChatContext) {
+async function findPiSessionFileForHistory(context: OusiaChatContext) {
   const cwd = expandHomePath(context.projectPath)
-  const conversationDir = getConversationDir(context)
-  const expectedSessionFile = await findRecentPiSessionFile(cwd, conversationDir)
-  if (expectedSessionFile) {
-    return { conversationDir, cwd, sessionFile: expectedSessionFile }
-  }
-
-  const sessionsRoot = join(app.getPath("userData"), "sessions")
-  if (!existsSync(sessionsRoot)) {
-    return undefined
-  }
-
-  const candidates = readdirSync(sessionsRoot, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .flatMap((entry) => {
-      const candidateDir = join(sessionsRoot, entry.name, safePathSegment(context.sessionId))
-      if (!existsSync(candidateDir)) {
-        return []
-      }
-      try {
-        return readdirSync(candidateDir)
-          .filter((name) => name.endsWith(".jsonl"))
-          .map((name) => ({
-            conversationDir: candidateDir,
-            sessionFile: join(candidateDir, name),
-          }))
-      } catch {
-        return []
-      }
-    })
-
-  const sortedCandidates = (
-    await Promise.all(
-      candidates.map(async (candidate) => {
-        try {
-          return {
-            ...candidate,
-            fileStat: await stat(candidate.sessionFile),
-          }
-        } catch {
-          return undefined
-        }
-      })
-    )
-  )
-    .filter((candidate): candidate is NonNullable<typeof candidate> =>
-      Boolean(candidate)
-    )
-    .sort((left, right) => right.fileStat.mtimeMs - left.fileStat.mtimeMs)
-
-  for (const candidate of sortedCandidates) {
-    const candidateCwd = readSessionHeaderCwd(candidate.sessionFile) ?? cwd
-    const sessionFile = await findRecentPiSessionFile(
-      candidateCwd,
-      candidate.conversationDir
-    )
-    if (!sessionFile) {
-      continue
-    }
-    writeRuntimeLog("chat.history", "warn", {
-      message: "Recovered session history from fallback directory",
-      requestedProjectPath: context.projectPath,
-      recoveredCwd: candidateCwd,
-      recoveredDir: candidate.conversationDir,
-      sessionId: context.sessionId,
-    })
-    return {
-      conversationDir: candidate.conversationDir,
-      cwd: candidateCwd,
-      sessionFile,
-    }
-  }
-
-  return undefined
+  const session = await findPiSessionByExactId(cwd, context.sessionId)
+  return session ? { cwd, sessionFile: session.path } : undefined
 }
 
 export function createAgentConversationModule({
@@ -868,11 +765,11 @@ export function createAgentConversationModule({
     context: OusiaChatContext,
     includeToolPayloads: boolean
   ) {
-    const lookup = await findRecentPiSessionFileForHistory(context)
+    const lookup = await findPiSessionFileForHistory(context)
     if (!lookup) {
       return []
     }
-    const { conversationDir, cwd, sessionFile } = lookup
+    const { sessionFile } = lookup
 
     const fileStat = await stat(sessionFile)
     const key = sessionKey(context)
@@ -892,7 +789,7 @@ export function createAgentConversationModule({
       return cacheEntry[cacheField]
     }
 
-    const sessionManager = SessionManager.open(sessionFile, conversationDir, cwd)
+    const sessionManager = SessionManager.open(sessionFile)
     const items: OusiaChatHistoryItem[] = []
     branchEntriesToHistoryItems(sessionManager.getBranch(), items, includeToolPayloads)
     cacheEntry[cacheField] = items
@@ -930,12 +827,8 @@ export function createAgentConversationModule({
     payload: OusiaChatBranchPayload
   ): Promise<OusiaChatBranchResult> {
     const cwd = expandHomePath(payload.projectPath)
-    const sourceConversationDir = getConversationDir(payload)
-    const sourceSessionFile = await findRecentPiSessionFile(
-      cwd,
-      sourceConversationDir
-    )
-    if (!sourceSessionFile) {
+    const sourceSession = await findPiSessionByExactId(cwd, payload.sessionId)
+    if (!sourceSession) {
       return {
         ok: false,
         error: "当前会话还没有可分支的 Pi 历史。",
@@ -943,11 +836,18 @@ export function createAgentConversationModule({
     }
 
     try {
-      const sourceSessionManager = SessionManager.open(
-        sourceSessionFile,
-        sourceConversationDir,
-        cwd
+      const existingTargetSession = await findPiSessionByExactId(
+        cwd,
+        payload.targetSessionId
       )
+      if (existingTargetSession) {
+        return {
+          ok: false,
+          error: "目标 Pi 会话已存在，无法覆盖。",
+        }
+      }
+
+      const sourceSessionManager = SessionManager.open(sourceSession.path)
       const leafId = findBranchLeafId(
         sourceSessionManager,
         payload.messageId,
@@ -960,32 +860,29 @@ export function createAgentConversationModule({
         }
       }
 
-      const targetContext = {
-        projectPath: payload.projectPath,
-        sessionId: payload.targetSessionId,
-      }
-      const targetConversationDir = getConversationDir(targetContext)
+      const targetConversationDir = getDefaultPiSessionDir(cwd)
       const targetFile = createBranchedSessionFile({
         cwd,
-        parentSessionFile: sourceSessionFile,
+        parentSessionFile: sourceSession.path,
         sourceSessionManager,
         targetConversationDir,
         targetSessionId: payload.targetSessionId,
         leafId,
       })
-      sessionPromises.delete(sessionKey(targetContext))
-      const targetSessionManager = SessionManager.open(
-        targetFile,
-        targetConversationDir,
-        cwd
+      sessionPromises.delete(
+        sessionKey({
+          projectPath: payload.projectPath,
+          sessionId: payload.targetSessionId,
+        })
       )
+      const targetSessionManager = SessionManager.open(targetFile)
       const items: OusiaChatHistoryItem[] = []
       branchEntriesToHistoryItems(targetSessionManager.getBranch(), items)
       return { ok: true, items }
     } catch (error) {
       writeRuntimeLog("chat.branch", "error", {
         payload,
-        sourceSessionFile,
+        sourceSessionFile: sourceSession.path,
         error,
       })
       return {
@@ -1331,13 +1228,10 @@ export function createAgentConversationModule({
   ) {
     ensurePiPackageDir()
     const cwd = expandHomePath(context.projectPath)
-    const userData = app.getPath("userData")
     const model = normalizeModelSettings(modelSettings)
-    const agentDir = resolvePiAgentDir(userData, model.configSource)
-    const conversationDir = getConversationDir(context)
+    const agentDir = resolvePiAgentDir()
     mkdirSync(cwd, { recursive: true })
     mkdirSync(agentDir, { recursive: true })
-    mkdirSync(conversationDir, { recursive: true })
 
     const authStorage = createWritablePiAuthStorage(agentDir)
     const modelRegistry = ModelRegistry.create(
@@ -1365,7 +1259,7 @@ export function createAgentConversationModule({
       agentDir,
       modelRegistry,
       resourceLoader,
-      sessionManager: SessionManager.continueRecent(cwd, conversationDir),
+      sessionManager: await openOrCreatePiSessionManager(cwd, context.sessionId),
       settingsManager,
       model: selectedModel,
       thinkingLevel,
@@ -1394,7 +1288,6 @@ export function createAgentConversationModule({
     session.subscribe((event) => translateAgentEvent(event, context, key))
     return {
       authStorage,
-      configSource: model.configSource,
       modelRegistry,
       runtimeApiKeyProvider: model.apiKey ? model.provider : undefined,
       session,
@@ -1410,15 +1303,9 @@ export function createAgentConversationModule({
     autoCompactContext?: boolean
   ): Promise<AgentSessionBundle> {
     const key = sessionKey(context)
-    const configSource = normalizeModelSettings(model).configSource
     const existingPromise = sessionPromises.get(key)
     if (existingPromise) {
-      const existingBundle = await existingPromise
-      if (existingBundle.configSource === configSource) {
-        return existingBundle
-      }
-      await existingBundle.session.abort().catch(() => undefined)
-      sessionPromises.delete(key)
+      return existingPromise
     }
 
     const promise = createSession(

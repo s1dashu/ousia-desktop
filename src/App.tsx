@@ -24,20 +24,17 @@ import {
   type SessionRecord,
 } from "@/app/app-state"
 import {
-  getOusiaModelProviderApiKey,
   normalizeOusiaAppSettings,
   resolveOusiaChatContentWidthValue,
   resolveOusiaFontFamilyValue,
   type OusiaChatEvent,
   type OusiaModelRegistryResult,
-  type OusiaPiEnvironmentStatus,
   type OusiaSidebarSectionId,
 } from "@/electron/chat-types"
 import { getMessages, isDefaultSessionTitle } from "@/app/i18n"
 import { modelsForProvider } from "@/app/model-presets"
 import { ChatArea } from "@/features/chat/ChatArea"
 import { applyChatEvent, type ChatItem } from "@/features/chat/chat-events"
-import { OnboardingDialog } from "@/features/onboarding/OnboardingDialog"
 import { SettingsPage } from "@/features/settings/SettingsPage"
 import { TitleBarSidebarToggle } from "@/features/shell/TitleBarTrafficLightSlot"
 import { Sidebar } from "@/features/sidebar/Sidebar"
@@ -276,16 +273,6 @@ export function App() {
   const t = getMessages(settings.language)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [modelRegistry, setModelRegistry] = useState<OusiaModelRegistryResult>()
-  const [piEnvironment, setPiEnvironment] =
-    useState<OusiaPiEnvironmentStatus>()
-  const [isCheckingPiEnvironment, setIsCheckingPiEnvironment] = useState(false)
-  const [isInstallingPi, setIsInstallingPi] = useState(false)
-  const [isSavingOnboardingProvider, setIsSavingOnboardingProvider] =
-    useState(false)
-  const [isOnboardingDebugOpen, setIsOnboardingDebugOpen] = useState(false)
-  const [onboardingCompleted, setOnboardingCompleted] = useState(
-    initialState.onboardingCompleted
-  )
   const [projects, setProjects] = useState<ProjectRecord[]>(
     initialState.projects
   )
@@ -430,10 +417,7 @@ export function App() {
     []
   )
   const createAppStateSnapshot = useCallback(
-    (
-      nextSettings: AppSettings = settings,
-      nextOnboardingCompleted = onboardingCompleted
-    ): InitialAppState => ({
+    (nextSettings: AppSettings = settings): InitialAppState => ({
       schemaVersion: APP_STATE_SCHEMA_VERSION,
       settings: nextSettings,
       sessions,
@@ -444,7 +428,6 @@ export function App() {
         sidebarSectionOrder,
       },
       windowState: initialState.windowState,
-      onboardingCompleted: nextOnboardingCompleted,
       expandedProjectIds: expandedProjectIds.filter((projectId) =>
         projects.some((project) => project.id === projectId)
       ),
@@ -454,7 +437,6 @@ export function App() {
       expandedProjectIds,
       initialState.windowState,
       isSidebarCollapsed,
-      onboardingCompleted,
       projects,
       selectedSession?.id,
       sessions,
@@ -474,96 +456,14 @@ export function App() {
     [createAppStateSnapshot, isAppStateLoaded]
   )
 
-  const refreshPiEnvironment = useCallback(async () => {
-    if (!window.ousia) {
-      return
-    }
-    setIsCheckingPiEnvironment(true)
-    try {
-      const status = await window.ousia.checkPiEnvironment({
-        configSource: settings.piConfigSource,
-      })
-      setPiEnvironment(status)
-    } finally {
-      setIsCheckingPiEnvironment(false)
-    }
-  }, [settings.piConfigSource])
-
   const refreshModelRegistry = useCallback(async () => {
     if (!window.ousia) {
       return undefined
     }
-    const registry = await window.ousia.listModels({
-      configSource: settings.piConfigSource,
-    })
+    const registry = await window.ousia.listModels()
     setModelRegistry(registry)
     return registry
-  }, [settings.piConfigSource])
-
-  const handleInstallPi = useCallback(async () => {
-    if (!window.ousia) {
-      return { ok: false, error: t.chat.noElectron }
-    }
-    setIsInstallingPi(true)
-    try {
-      const result = await window.ousia.installPi()
-      if (result.status) {
-        setPiEnvironment(result.status)
-      } else {
-        await refreshPiEnvironment()
-      }
-      await refreshModelRegistry()
-      return result
-    } finally {
-      setIsInstallingPi(false)
-    }
-  }, [refreshModelRegistry, refreshPiEnvironment, t.chat.noElectron])
-
-  const handleSaveOnboardingProvider = useCallback(
-    async (providerId: string, apiKey: string) => {
-      if (!window.ousia) {
-        return { ok: false, error: t.chat.noElectron }
-      }
-      setIsSavingOnboardingProvider(true)
-      try {
-        const result = await window.ousia.savePiProviderCredential({
-          apiKey,
-          configSource: settings.piConfigSource,
-          provider: providerId,
-        })
-        if (result.status) {
-          setPiEnvironment(result.status)
-        }
-        const registry = await refreshModelRegistry()
-        const defaultModel =
-          registry?.providers.find((provider) => provider.id === providerId)
-            ?.models[0]
-        handleSettingsChange({
-          ...settings,
-          modelProvider: providerId,
-          modelId: defaultModel?.modelId ?? settings.modelId,
-        })
-        return result
-      } finally {
-        setIsSavingOnboardingProvider(false)
-      }
-    },
-    [handleSettingsChange, refreshModelRegistry, settings, t.chat.noElectron]
-  )
-
-  const handleCompleteOnboarding = useCallback(() => {
-    setIsOnboardingDebugOpen(false)
-    setOnboardingCompleted(true)
-    if (isAppStateLoaded) {
-      void saveAppState(createAppStateSnapshot(settings, true))
-    }
-  }, [createAppStateSnapshot, isAppStateLoaded, settings])
-
-  const handleOpenOnboarding = useCallback(() => {
-    setIsOnboardingDebugOpen(true)
-    void refreshModelRegistry()
-    void refreshPiEnvironment()
-  }, [refreshModelRegistry, refreshPiEnvironment])
+  }, [])
   const flushPendingChatEvents = useCallback(() => {
     pendingChatEventsFrameRef.current = 0
     const pendingEvents = pendingChatEventsRef.current
@@ -636,7 +536,6 @@ export function App() {
       setExpandedProjectIds(state.expandedProjectIds)
       setSessions(state.sessions)
       setSelectedSessionId(state.selectedSessionId)
-      setOnboardingCompleted(state.onboardingCompleted)
       setIsAppStateLoaded(true)
     })
     return () => {
@@ -649,8 +548,7 @@ export function App() {
       return
     }
     void refreshModelRegistry()
-    void refreshPiEnvironment()
-  }, [isAppStateLoaded, refreshModelRegistry, refreshPiEnvironment])
+  }, [isAppStateLoaded, refreshModelRegistry])
 
   useEffect(() => {
     if (!modelRegistry) {
@@ -1360,13 +1258,6 @@ export function App() {
     if (!window.ousia || titleGenerationSessionIdsRef.current.has(sessionId)) {
       return
     }
-    const apiKey =
-      settings.piConfigSource === "ousia"
-        ? getOusiaModelProviderApiKey(settings)?.trim()
-        : undefined
-    if (settings.piConfigSource === "ousia" && !apiKey) {
-      return
-    }
     titleGenerationSessionIdsRef.current.add(sessionId)
     void window.ousia
       .generateChatTitle({
@@ -1374,8 +1265,6 @@ export function App() {
         model: {
           provider: settings.modelProvider,
           modelId: settings.modelId,
-          apiKey,
-          configSource: settings.piConfigSource,
         },
       })
       .then((result) => {
@@ -1654,23 +1543,6 @@ export function App() {
       >
         {zoomIndicatorPercent ?? 100}%
       </div>
-      <OnboardingDialog
-        isCheckingPi={isCheckingPiEnvironment}
-        isInstallingPi={isInstallingPi}
-        isSavingProvider={isSavingOnboardingProvider}
-        modelRegistry={modelRegistry}
-        onComplete={handleCompleteOnboarding}
-        onInstallPi={handleInstallPi}
-        onRefreshPi={() => void refreshPiEnvironment()}
-        onSaveProvider={handleSaveOnboardingProvider}
-        open={Boolean(
-          window.ousia &&
-            isAppStateLoaded &&
-            (!onboardingCompleted || isOnboardingDebugOpen)
-        )}
-        piEnvironment={piEnvironment}
-        settings={settings}
-      />
       {isSidebarCollapsed ? null : (
         <div
           ref={sidebarShellRef}
@@ -1722,7 +1594,7 @@ export function App() {
               modelRegistry={modelRegistry}
               settings={settings}
               onClose={() => setIsSettingsOpen(false)}
-              onOpenOnboarding={handleOpenOnboarding}
+              onRefreshModelRegistry={refreshModelRegistry}
               onSettingsChange={handleSettingsChange}
             />
           ) : (
@@ -1741,6 +1613,7 @@ export function App() {
               onGenerateSessionTitle={handleGenerateSessionTitle}
               onBranchFromMessage={handleBranchFromMessage}
               onLoadOlderHistory={handleLoadOlderHistory}
+              onRefreshModelRegistry={refreshModelRegistry}
               onSessionCompletionVisibility={markSessionCompletionVisibility}
               onSessionViewed={markSessionViewed}
               hasMoreHistory={Boolean(selectedHistoryPageState?.hasMore)}
