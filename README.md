@@ -36,10 +36,6 @@ agent. It keeps the product surface intentionally direct: pick a project, open a
 chat session, choose a model provider, and let the agent work in that project's
 directory.
 
-This branch does not include the older Ousia extension runtime, workspace tabs,
-right-side terminal panel, browser/editor/PDF workspaces, or extension
-marketplace surfaces. The current product is the agent chat experience.
-
 ## Highlights
 
 - **Project-aware agent sessions**: each chat request includes a project path
