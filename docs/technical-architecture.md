@@ -85,15 +85,19 @@ credentials, resources, and session history.
 Ousia maps its sidebar `sessionId` to a Pi session with the same id in Pi's
 default session directory for the project cwd. If the Pi session already exists,
 it is opened; otherwise Ousia creates a new Pi session with that id. Provider
-API keys entered through Ousia are written into the local Pi `auth.json` as a
-single-provider merge, preserving unrelated existing Pi credentials.
+API keys entered through Ousia are saved through Pi's auth storage API as a
+single-provider merge, preserving unrelated existing Pi credentials. For users,
+the supported configuration entry points are Pi itself, usually through the Pi
+TUI/login flow, and Ousia's settings UI; the concrete auth storage file is a
+Pi-owned implementation detail.
 
 On macOS, apps launched from Finder or a DMG do not inherit terminal shell
 environment variables. During main-process startup, Ousia reads the user's shell
 environment and imports missing variables into the Electron process so Pi can
 see provider keys configured through shell startup files. Runtime logs record
-only imported variable names, not values. Persisting provider keys into Pi's
-`auth.json` remains the most stable configuration path.
+only imported variable names, not values. For durable provider configuration,
+users should configure Pi through Pi's own UI/commands or through Ousia's model
+provider settings.
 
 The app no longer installs an Ousia usage skill, filters a user `ousia` skill,
 or prepends an `ousia` CLI shim to the agent environment.
