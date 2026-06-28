@@ -2,7 +2,7 @@ import {
   ArrowShrink,
   Check,
   Copy,
-  FolderOpen,
+  Folder,
   MoreHorizontal,
 } from "@/components/icons/huge-icons"
 
@@ -63,7 +63,7 @@ export function ChatHeader({
   return (
     <header
       className={cn(
-        "window-drag absolute inset-x-0 top-0 z-30 grid h-[var(--ousia-titlebar-height)] select-none grid-cols-[minmax(0,1fr)_auto] items-center gap-2 pr-4 pl-4 transition-[background-color,box-shadow,backdrop-filter]",
+        "window-drag relative z-30 grid h-[var(--ousia-titlebar-height)] shrink-0 select-none grid-cols-[minmax(0,1fr)_auto] items-center gap-2 pr-4 pl-4 transition-[background-color,box-shadow,backdrop-filter]",
         isScrolled
           ? "bg-white shadow-none dark:bg-card"
           : "bg-white shadow-none dark:bg-card"
@@ -98,7 +98,7 @@ export function ChatHeader({
                 disabled={!currentProject || isOpeningProjectDirectory}
                 onClick={onOpenProjectDirectory}
               >
-                <FolderOpen size={18} />
+                <Folder size={18} />
               </Button>
             </TooltipTrigger>
             <TooltipContent align="end" side="bottom">

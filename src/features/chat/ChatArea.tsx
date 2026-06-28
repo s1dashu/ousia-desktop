@@ -1677,7 +1677,7 @@ export function ChatArea({
       <div
         ref={scrollRef}
         className={cn(
-          "ousia-hover-scrollbar ousia-stable-scrollbar-gutter min-h-0 flex-1 select-text overflow-auto bg-white pt-14 pb-16 dark:bg-card",
+          "ousia-hover-scrollbar ousia-stable-scrollbar-gutter min-h-0 flex-1 select-text overflow-auto bg-white pt-4 pb-16 dark:bg-card",
           CHAT_HORIZONTAL_PADDING_CLASS
         )}
         onScroll={handleChatScroll}
@@ -1950,8 +1950,9 @@ export function ChatArea({
                   <DropdownMenuContent
                     side="top"
                     sideOffset={8}
+                    collisionPadding={24}
                     align="start"
-                    className="ousia-hover-scrollbar w-72 rounded-xl p-2"
+                    className="ousia-hover-scrollbar max-h-[min(var(--radix-dropdown-menu-content-available-height),640px)] w-72 rounded-xl p-2"
                   >
                     <DropdownMenuLabel className="px-2 pt-1 pb-1 text-sm text-neutral-500">
                       Reasoning

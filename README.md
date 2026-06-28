@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/s1dashu/ousia-desktop/releases/latest"><strong>Download the latest macOS DMG</strong></a>
+  <a href="https://github.com/s1dashu/ousia-desktop/releases/download/v0.1.6/Ousia-0.1.6-arm64.dmg"><strong>Download macOS DMG v0.1.6</strong></a>
   ·
   <a href="#getting-started">Run from source</a>
   ·
@@ -19,7 +19,9 @@
 ## Download
 
 Download the newest macOS build from
-[GitHub Releases](https://github.com/s1dashu/ousia-desktop/releases/latest).
+[GitHub Releases](https://github.com/s1dashu/ousia-desktop/releases/tag/v0.1.6)
+or install it directly from
+[Ousia-0.1.6-arm64.dmg](https://github.com/s1dashu/ousia-desktop/releases/download/v0.1.6/Ousia-0.1.6-arm64.dmg).
 
 The release artifact is a `.dmg` installer. Open it, drag **Ousia** into
 **Applications**, then launch the app from Applications.
