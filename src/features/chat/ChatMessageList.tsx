@@ -66,7 +66,16 @@ export const ChatMessageList = memo(function ChatMessageList({
               />
             </div>
           ))}
-          {showTurnWaitIndicator ? <AgentTurnWaitIndicator t={t} /> : null}
+          {showTurnWaitIndicator ? (
+            <div
+              className={cn(
+                "ousia-chat-message-contain",
+                chatWaitIndicatorSpacingClass(renderItems.at(-1))
+              )}
+            >
+              <AgentTurnWaitIndicator t={t} />
+            </div>
+          ) : null}
         </>
       ) : null}
     </div>
@@ -88,6 +97,10 @@ function chatItemSpacingClass(item: ChatItem, previousItem?: ChatItem) {
 
   if (previousItem.role === "tool") {
     return "mt-5"
+  }
+
+  if (item.role === "user" && previousItem.role === "assistant") {
+    return "mt-4"
   }
 
   return "mt-6"
@@ -145,6 +158,15 @@ function chatRenderItemSpacingClass(
     chatRenderItemPrimaryItem(item),
     previousItem ? chatRenderItemPrimaryItem(previousItem) : undefined
   )
+}
+
+function chatWaitIndicatorSpacingClass(previousItem?: ChatRenderItem) {
+  if (!previousItem) {
+    return "mt-0"
+  }
+
+  const previousPrimaryItem = chatRenderItemPrimaryItem(previousItem)
+  return previousPrimaryItem.role === "tool" ? "mt-5" : "mt-6"
 }
 
 function chatRenderItemPrimaryItem(item: ChatRenderItem) {
@@ -406,11 +428,11 @@ function MessageAttachmentList({
 function AgentTurnWaitIndicator({ t }: { t: ReturnType<typeof getMessages> }) {
   return (
     <div
-      className="flex min-h-10 items-start px-2 pt-1"
+      className="ousia-chat-message-text flex min-h-5 items-center text-sm leading-5 text-foreground"
       aria-label={t.chat.waitingForNextStep}
       role="status"
     >
-      <span className="flex h-5 items-center gap-1">
+      <span className="inline-flex h-5 items-center gap-1 align-baseline">
         {[0, 1, 2].map((index) => (
           <span
             className="size-1.5 rounded-full bg-muted-foreground/55 motion-reduce:animate-none"
