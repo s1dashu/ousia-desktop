@@ -1796,7 +1796,7 @@ export function ChatArea({
                   event.currentTarget.form?.requestSubmit()
                 }
               }}
-              className="ousia-hover-scrollbar min-h-12 rounded-none border-0 bg-transparent p-0 text-sm leading-6 placeholder:text-muted-foreground/55 [field-sizing:fixed] focus-visible:ring-0"
+              className="ousia-hover-scrollbar -mr-4 min-h-12 w-[calc(100%+1rem)] rounded-none border-0 bg-transparent py-0 pr-2 pl-0 text-sm leading-6 placeholder:text-muted-foreground/55 [field-sizing:fixed] focus-visible:ring-0"
               placeholder={
                 editingQueueId
                   ? t.chat.editQueuedMessage

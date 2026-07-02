@@ -6,11 +6,16 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type WheelEvent,
 } from "react"
 
 import type { getMessages } from "@/app/i18n"
+import { SendArrowDown } from "@/components/icons/huge-icons"
 import { useTheme, type ResolvedTheme } from "@/components/theme-provider"
+import { Button } from "@/components/ui/button"
 import type { OusiaChatToolFilePreview } from "@/electron/chat-types"
+
+const SCROLL_TO_LATEST_THRESHOLD = 24
 
 const wrapFillUnsafeCSS = `
   [data-overflow="wrap"] {
@@ -83,6 +88,17 @@ const previewFrameStyle = {
 const pierreSurfaceStyle = {
   display: "block",
 } satisfies CSSProperties
+
+function isScrolledToLatest(node: HTMLDivElement) {
+  return (
+    node.scrollHeight - node.scrollTop - node.clientHeight <
+    SCROLL_TO_LATEST_THRESHOLD
+  )
+}
+
+function hasScrollableContent(node: HTMLDivElement) {
+  return node.scrollHeight > node.clientHeight + 2
+}
 
 const LazyPierreDiffPreview = lazy(async () => {
   const [{ File, FileDiff, PatchDiff }, { parseDiffFromFile }] = await Promise.all([
@@ -223,17 +239,47 @@ export function ToolFilePreviewView({
   const { resolvedTheme } = useTheme()
   const frameRef = useRef<HTMLDivElement>(null)
   const [isFollowingLatest, setIsFollowingLatest] = useState(true)
+  const [showScrollToLatest, setShowScrollToLatest] = useState(false)
 
   useLayoutEffect(() => {
-    if (!isFollowingLatest) {
-      return
-    }
     const node = frameRef.current
     if (!node) {
       return
     }
+    if (!isFollowingLatest) {
+      setShowScrollToLatest(hasScrollableContent(node))
+      return
+    }
     node.scrollTop = node.scrollHeight
+    setShowScrollToLatest(false)
   }, [isFollowingLatest, preview])
+
+  function syncFollowState(node: HTMLDivElement) {
+    const isAtLatest = isScrolledToLatest(node)
+    setIsFollowingLatest(isAtLatest)
+    setShowScrollToLatest(!isAtLatest && hasScrollableContent(node))
+  }
+
+  function handleWheelCapture(event: WheelEvent<HTMLDivElement>) {
+    if (event.deltaY >= 0 || event.currentTarget.scrollTop <= 0) {
+      return
+    }
+    setIsFollowingLatest(false)
+    setShowScrollToLatest(hasScrollableContent(event.currentTarget))
+  }
+
+  function scrollToLatest(behavior: ScrollBehavior = "auto") {
+    const node = frameRef.current
+    if (!node) {
+      return
+    }
+    setIsFollowingLatest(true)
+    setShowScrollToLatest(false)
+    node.scrollTo({
+      behavior,
+      top: node.scrollHeight,
+    })
+  }
 
   if (preview.kind === "error") {
     return (
@@ -246,26 +292,43 @@ export function ToolFilePreviewView({
   }
 
   return (
-    <div
-      ref={frameRef}
-      className="ousia-hover-scrollbar mt-1.5"
-      onScroll={(event) => {
-        const node = event.currentTarget
-        setIsFollowingLatest(
-          node.scrollHeight - node.scrollTop - node.clientHeight < 8
-        )
-      }}
-      style={previewFrameStyle}
-    >
-      <Suspense
-        fallback={
-          <div className="px-2.5 py-2 text-[11px] leading-4 text-muted-foreground">
-            {t.chat.toolPayloadLoading}
-          </div>
-        }
+    <div className="relative mt-1.5">
+      <div
+        ref={frameRef}
+        className="ousia-hover-scrollbar"
+        onScroll={(event) => {
+          syncFollowState(event.currentTarget)
+        }}
+        onWheelCapture={handleWheelCapture}
+        style={previewFrameStyle}
       >
-        <LazyPierreDiffPreview preview={preview} themeType={resolvedTheme} />
-      </Suspense>
+        <Suspense
+          fallback={
+            <div className="px-2.5 py-2 text-[11px] leading-4 text-muted-foreground">
+              {t.chat.toolPayloadLoading}
+            </div>
+          }
+        >
+          <LazyPierreDiffPreview preview={preview} themeType={resolvedTheme} />
+        </Suspense>
+      </div>
+
+      {showScrollToLatest ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-2 z-10 flex justify-center">
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon-sm"
+            className="pointer-events-auto size-6 rounded-full border-[0.5px] border-foreground/10 bg-popover/90 text-popover-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.72),inset_0_0_0_1px_rgba(255,255,255,0.22),0_4px_14px_rgba(0,0,0,0.045),0_1px_5px_rgba(0,0,0,0.025)] backdrop-blur hover:bg-popover/95 dark:border-foreground/10 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06),inset_0_0_0_1px_rgba(255,255,255,0.04),0_4px_14px_rgba(0,0,0,0.22),0_1px_5px_rgba(0,0,0,0.12)]"
+            aria-label={t.chat.scrollToLatest}
+            onClick={() => {
+              scrollToLatest("smooth")
+            }}
+          >
+            <SendArrowDown className="size-[18px]" strokeWidth={1.5} />
+          </Button>
+        </div>
+      ) : null}
     </div>
   )
 }

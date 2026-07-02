@@ -7,10 +7,28 @@ type ToolItem = Extract<OusiaChatHistoryItem, { role: "tool" }>
 
 export function toolFilePreviewFromItem(item: ToolItem) {
   return (
-    item.filePreview ??
+    normalizedStoredFilePreview(item) ??
     fallbackWriteFilePreview(item) ??
     pendingToolFilePreview(item)
   )
+}
+
+function normalizedStoredFilePreview(
+  item: ToolItem
+): OusiaChatToolFilePreview | undefined {
+  if (!item.filePreview) {
+    return undefined
+  }
+  if (normalizedToolName(item.name) !== "write") {
+    return item.filePreview
+  }
+  if (item.filePreview.kind !== "diff") {
+    return item.filePreview
+  }
+  return {
+    ...item.filePreview,
+    oldContent: "",
+  }
 }
 
 function fallbackWriteFilePreview(

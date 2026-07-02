@@ -1,4 +1,4 @@
-import { existsSync, statSync, readFileSync } from "node:fs"
+import { statSync, readFileSync } from "node:fs"
 
 import type { OusiaChatToolFilePreview } from "./chat-types.js"
 import { resolveProjectFilePath } from "./host-paths.js"
@@ -12,7 +12,6 @@ type EditReplacement = {
 
 export function createToolFilePreview({
   args,
-  previousPreview,
   projectPath,
   toolName,
 }: {
@@ -23,7 +22,7 @@ export function createToolFilePreview({
 }): OusiaChatToolFilePreview | undefined {
   const normalizedName = toolName?.toLowerCase()
   if (normalizedName === "write") {
-    return createWritePreview(projectPath, args, previousPreview)
+    return createWritePreview(args)
   }
   if (normalizedName === "edit") {
     return createEditPreview(projectPath, args)
@@ -85,11 +84,7 @@ export function createToolResultFilePreview({
   }
 }
 
-function createWritePreview(
-  projectPath: string,
-  args: unknown,
-  previousPreview: OusiaChatToolFilePreview | undefined
-): OusiaChatToolFilePreview | undefined {
+function createWritePreview(args: unknown): OusiaChatToolFilePreview | undefined {
   const fields = writeFieldsFromArgs(args)
   if (!fields) {
     return undefined
@@ -100,49 +95,12 @@ function createWritePreview(
     return undefined
   }
 
-  const previousForPath =
-    previousPreview &&
-    "path" in previousPreview &&
-    previousPreview.path === path
-      ? previousPreview
-      : undefined
-
-  if (previousForPath?.kind === "diff") {
-    return {
-      kind: "diff",
-      path,
-      oldContent: previousForPath.oldContent,
-      newContent: content,
-      source: "input",
-    }
-  }
-
-  if (previousForPath?.kind === "file") {
-    return {
-      kind: "file",
-      path,
-      content,
-      source: "input",
-    }
-  }
-
-  try {
-    const { absoluteFilePath } = resolveProjectFilePath(projectPath, path)
-    const oldContent = readExistingTextFile(absoluteFilePath)
-    return {
-      kind: "diff",
-      path,
-      oldContent: oldContent ?? "",
-      newContent: content,
-      source: "input",
-    }
-  } catch {
-    return {
-      kind: "file",
-      path,
-      content,
-      source: "input",
-    }
+  return {
+    kind: "diff",
+    path,
+    oldContent: "",
+    newContent: content,
+    source: "input",
   }
 }
 
@@ -395,13 +353,6 @@ function parseJson(value: string): unknown {
   } catch {
     return undefined
   }
-}
-
-function readExistingTextFile(filePath: string) {
-  if (!existsSync(filePath)) {
-    return undefined
-  }
-  return readTextFile(filePath)
 }
 
 function readTextFile(filePath: string) {
